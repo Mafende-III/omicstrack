@@ -1,0 +1,14 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY server/package.json server/package-lock.json* ./
+RUN npm ci --omit=dev
+
+COPY server/ .
+
+RUN mkdir -p uploads
+
+EXPOSE 3001
+
+CMD ["sh", "-c", "npx knex migrate:latest --knexfile knexfile.js && npx knex seed:run --knexfile knexfile.js && node src/index.js"]

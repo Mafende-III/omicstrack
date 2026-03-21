@@ -1,0 +1,74 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: omicstrack
+      POSTGRES_USER: omicstrack
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-omicstrack_secret}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omicstrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://omicstrack:${DB_PASSWORD:-omicstrack_secret}@db:5432/omicstrack
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      UPLOAD_DIR: /app/uploads
+      PORT: 3001
+      NODE_ENV: production
+      CORS_ORIGIN: https://omicstrack.com
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - internal
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.client
+    restart: unless-stopped
+    depends_on:
+      - server
+    labels:
+      - traefik.enable=true
+      # HTTPS router
+      - traefik.http.routers.omicstrack.rule=Host(`omicstrack.com`) || Host(`www.omicstrack.com`)
+      - traefik.http.routers.omicstrack.entrypoints=websecure
+      - traefik.http.routers.omicstrack.tls.certresolver=letsencrypt
+      - traefik.http.services.omicstrack.loadbalancer.server.port=80
+      # HTTP → HTTPS redirect
+      - traefik.http.routers.omicstrack-http.rule=Host(`omicstrack.com`) || Host(`www.omicstrack.com`)
+      - traefik.http.routers.omicstrack-http.entrypoints=web
+      - traefik.http.routers.omicstrack-http.middlewares=redirect-to-https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
+    networks:
+      - traefik-proxy
+      - internal
+
+networks:
+  traefik-proxy:
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  uploads:

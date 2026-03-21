@@ -1,0 +1,16 @@
+node_modules
+client/node_modules
+server/node_modules
+client/dist
+.git
+.github
+.claude
+.env
+.env.local
+docker/.env
+server/.env
+docs
+*.md
+.DS_Store
+.vscode
+.idea
