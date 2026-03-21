@@ -1,23 +1,4 @@
 services:
-  traefik:
-    image: traefik:v2.11
-    restart: unless-stopped
-    command:
-      - --api.dashboard=false
-      - --providers.docker=true
-      - --providers.docker.exposedbydefault=false
-      - --entrypoints.web.address=:80
-      - --entrypoints.websecure.address=:443
-      - --certificatesresolvers.letsencrypt.acme.email=admin@omicstrack.com
-      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
-      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - letsencrypt:/letsencrypt
-
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -59,21 +40,26 @@ services:
       context: .
       dockerfile: docker/Dockerfile.client
     restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
     depends_on:
       - server
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.omicstrack.rule=Host(`omicstrack.com`) || Host(`www.omicstrack.com`)
-      - traefik.http.routers.omicstrack.entrypoints=websecure
-      - traefik.http.routers.omicstrack.tls.certresolver=letsencrypt
-      - traefik.http.services.omicstrack.loadbalancer.server.port=80
-      - traefik.http.routers.omicstrack-http.rule=Host(`omicstrack.com`) || Host(`www.omicstrack.com`)
-      - traefik.http.routers.omicstrack-http.entrypoints=web
-      - traefik.http.routers.omicstrack-http.middlewares=redirect-to-https
-      - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
-      - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+
+  certbot:
+    image: certbot/certbot
+    depends_on:
+      - nginx
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'if [ ! -f /etc/letsencrypt/live/omicstrack.com/fullchain.pem ]; then sleep 10 && certbot certonly --webroot -w /var/www/certbot -d omicstrack.com -d www.omicstrack.com --email admin@omicstrack.com --agree-tos --no-eff-email --force-renewal; fi; trap exit TERM; while :; do sleep 12h; certbot renew --quiet; done'"
 
 volumes:
   pgdata:
   uploads:
-  letsencrypt:
+  certbot-conf:
+  certbot-www:
