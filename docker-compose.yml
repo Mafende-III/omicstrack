@@ -69,6 +69,7 @@ services:
       - server
     labels:
       - traefik.enable=true
+      - traefik.docker.network=omicstrack_web
       - traefik.http.routers.omicstrack.rule=Host(`omicstrack.com`) || Host(`www.omicstrack.com`)
       - traefik.http.routers.omicstrack.entrypoints=websecure
       - traefik.http.routers.omicstrack.tls.certresolver=letsencrypt
