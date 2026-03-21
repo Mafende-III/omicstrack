@@ -1,0 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&display=swap');
+
+:root {
+  /* Surface hierarchy */
+  --bg: #F8F9FC;
+  --s1: #FFFFFF;
+  --s2: #F1F3F7;
+  --s3: #E8EBF0;
+
+  /* Borders */
+  --bd: #DDE1E9;
+  --bdh: #C5CBD6;
+  --bda: rgba(0, 133, 115, 0.25);
+
+  /* Primary accent (medical teal) */
+  --ac: #008573;
+  --acd: rgba(0, 133, 115, 0.06);
+  --acb: rgba(0, 133, 115, 0.12);
+  --ac-dark: #006B5D;
+
+  /* Secondary accent */
+  --ac2: #5B5FC7;
+  --ac2d: rgba(91, 95, 199, 0.07);
+
+  /* Text hierarchy */
+  --tx: #1A1D26;
+  --tx2: #5F6B7A;
+  --tx3: #A0A8B4;
+
+  /* Status */
+  --ok: #16A34A;
+  --okd: rgba(22, 163, 74, 0.08);
+  --okb: rgba(22, 163, 74, 0.18);
+
+  --warn: #D97706;
+  --warnd: rgba(217, 119, 6, 0.08);
+  --warnb: rgba(217, 119, 6, 0.18);
+
+  --err: #DC2626;
+  --errd: rgba(220, 38, 38, 0.07);
+  --errb: rgba(220, 38, 38, 0.15);
+
+  /* Role-specific */
+  --viewer-c: #4B6BFB;
+  --viewer-d: rgba(75, 107, 251, 0.07);
+  --viewer-b: rgba(75, 107, 251, 0.18);
+  --liege-c: #7C3AED;
+  --liege-d: rgba(124, 58, 237, 0.07);
+  --liege-b: rgba(124, 58, 237, 0.18);
+  --entry-c: #16A34A;
+
+  /* Radii */
+  --r: 10px;
+  --r2: 14px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10);
+
+  /* Typography */
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Times New Roman', Times, serif;
+}

@@ -1,0 +1,254 @@
+/* App shell */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  padding: 24px 24px;
+  max-width: 960px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Header */
+.hdr {
+  background: var(--s1);
+  border-bottom: 1px solid var(--bd);
+  height: 56px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.4px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--tx);
+}
+
+.brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--ac);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+.hdr-r {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Animated navigation */
+.nav-wrap {
+  background: var(--s1);
+  border-bottom: 1px solid var(--bd);
+  padding: 8px 16px;
+}
+
+.nav {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--s2);
+  border-radius: 10px;
+  max-width: 920px;
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.nav-indicator {
+  position: absolute;
+  height: calc(100% - 6px);
+  top: 3px;
+  background: var(--s1);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 0;
+}
+
+.nav-tab {
+  position: relative;
+  z-index: 1;
+  padding: 9px 20px;
+  color: var(--tx2);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: color 0.18s;
+  white-space: nowrap;
+}
+
+.nav-tab.on {
+  color: var(--tx);
+  font-weight: 600;
+}
+
+.nav-tab:hover {
+  color: var(--tx);
+}
+
+/* Mobile bottom nav */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--s1);
+  border-top: 1px solid var(--bd);
+  padding: 6px 8px;
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+  z-index: 200;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.mobile-nav-inner {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.mnav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s;
+  min-width: 56px;
+}
+
+.mnav-btn .mnav-icon {
+  font-size: 1.1rem;
+  color: var(--tx3);
+  transition: color 0.15s;
+}
+
+.mnav-btn .mnav-lbl {
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--tx3);
+  font-family: var(--font-body);
+  transition: color 0.15s;
+}
+
+.mnav-btn.on .mnav-icon,
+.mnav-btn.on .mnav-lbl {
+  color: var(--ac);
+}
+
+.mnav-btn.on {
+  background: var(--acd);
+}
+
+/* Language dropdown */
+.lang-dd {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  background: var(--s1);
+  border: 1px solid var(--bd);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 300;
+  min-width: 140px;
+  box-shadow: var(--shadow-lg);
+}
+
+.lang-opt {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--tx2);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  transition: background 0.12s;
+}
+
+.lang-opt:hover {
+  background: var(--s2);
+}
+
+.lang-opt.on {
+  color: var(--ac);
+  background: var(--acd);
+  font-weight: 600;
+}
+
+/* Responsive: Tablet */
+@media (max-width: 768px) {
+  .main {
+    padding: 20px 16px;
+  }
+}
+
+/* Responsive: Phone */
+@media (max-width: 640px) {
+  .nav-wrap {
+    display: none;
+  }
+
+  .mobile-nav {
+    display: block;
+  }
+
+  .main {
+    padding: 16px 12px;
+    padding-bottom: 80px;
+  }
+
+  .hdr {
+    height: 50px;
+    padding: 0 12px;
+  }
+
+  .brand {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 12px 8px;
+    padding-bottom: 80px;
+  }
+}

@@ -1,0 +1,52 @@
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fade {
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeInQuick {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-quick {
+  animation: fadeInQuick 0.15s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease;
+}
+
+/* Infinite marquee for login objectives */
+@keyframes marqueeScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
