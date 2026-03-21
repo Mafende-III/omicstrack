@@ -1,11 +1,32 @@
 services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - --api.dashboard=false
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=admin@omicstrack.com
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - web
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: omicstrack
       POSTGRES_USER: omicstrack
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-omicstrack_secret}
+      POSTGRES_PASSWORD: 5b46a9bab1e096d9504a5f26d4689e86
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -25,9 +46,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgres://omicstrack:${DB_PASSWORD:-omicstrack_secret}@db:5432/omicstrack
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      DATABASE_URL: postgres://omicstrack:5b46a9bab1e096d9504a5f26d4689e86@db:5432/omicstrack
+      JWT_SECRET: 0152b09f83cafc6ba4820f590d54c12cb3a0925911e0f96aba7f3bc85a8ba2e7
+      JWT_REFRESH_SECRET: 4f07f3b9cc5b86bcc18987cbf7c6bc91bb425ced7b2fcb70dcadda106aa1fa09
       JWT_ACCESS_EXPIRY: 15m
       JWT_REFRESH_EXPIRY: 7d
       UPLOAD_DIR: /app/uploads
@@ -60,15 +81,16 @@ services:
       - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
       - traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true
     networks:
-      - traefik-proxy
+      - web
       - internal
 
 networks:
-  traefik-proxy:
-    external: true
+  web:
+    driver: bridge
   internal:
     driver: bridge
 
 volumes:
   pgdata:
   uploads:
+  letsencrypt:
