@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { UserRepo, PatientRepo, PrefsRepo } from '../storage/repository.js';
+import { UserRepo, PatientRepo, PrefsRepo, TemplateRepo } from '../storage/repository.js';
 import { api } from '../storage/engine.js';
 import { T } from '../constants/translations.js';
 
@@ -10,9 +10,24 @@ export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [consentTemplate, setConsentTemplate] = useState(null);
+  const [questionnaireTemplate, setQuestionnaireTemplate] = useState(null);
   const [ready, setReady] = useState(false);
 
   const t = T[lang];
+
+  const refreshTemplates = useCallback(async () => {
+    try {
+      const [c, q] = await Promise.all([
+        TemplateRepo.getActive('consent').catch(() => null),
+        TemplateRepo.getActive('questionnaire').catch(() => null),
+      ]);
+      setConsentTemplate(c);
+      setQuestionnaireTemplate(q);
+    } catch {
+      // Non-critical — workflow steps will fall back to static imports
+    }
+  }, []);
 
   // Initialize: try to restore session from refresh cookie
   useEffect(() => {
@@ -33,13 +48,15 @@ export function AppProvider({ children }) {
 
           const pts = await PatientRepo.getAll();
           setPatients(pts);
+
+          await refreshTemplates();
         }
       } catch {
         // No valid session
       }
       setReady(true);
     })();
-  }, []);
+  }, [refreshTemplates]);
 
   const setLang = useCallback(async (l) => {
     setLangState(l);
@@ -66,8 +83,10 @@ export function AppProvider({ children }) {
     const prefs = await PrefsRepo.get();
     if (prefs?.lang) setLangState(prefs.lang);
 
+    await refreshTemplates();
+
     return result.user;
-  }, []);
+  }, [refreshTemplates]);
 
   const logout = useCallback(async () => {
     try {
@@ -79,6 +98,8 @@ export function AppProvider({ children }) {
     setUser(null);
     setUsers([]);
     setPatients([]);
+    setConsentTemplate(null);
+    setQuestionnaireTemplate(null);
   }, []);
 
   const addPatient = useCallback(async (patient) => {
@@ -117,6 +138,7 @@ export function AppProvider({ children }) {
     user, login, logout,
     users, addUser, removeUser,
     patients, addPatient, updatePatient, refreshPatients,
+    consentTemplate, questionnaireTemplate, refreshTemplates,
     logAudit,
     ready,
   };

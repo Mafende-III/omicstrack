@@ -5,6 +5,33 @@ import { api } from '../../storage/engine.js';
 import { QF } from '../../constants/questionnaire.js';
 import FileViewer from '../shared/FileViewer.jsx';
 
+// Normalize either the DB template content or the bundled QF static module
+// into a single runtime shape: [{ key, label, fields: [{ id, type, label, options }] }, ...]
+function buildSections(template, lang, fallbackSecLabels) {
+  if (template?.sections?.length) {
+    return template.sections.map((sec) => ({
+      key: sec.key,
+      label: sec.labels?.[lang] || sec.labels?.en || sec.key,
+      fields: sec.fields.map((f) => ({
+        id: f.id,
+        type: f.type || 'text',
+        label: f.labels?.[lang] || f.labels?.en || f.id,
+        options: f.options || [],
+      })),
+    }));
+  }
+  return Object.keys(QF).map((key) => ({
+    key,
+    label: fallbackSecLabels?.[key] || key,
+    fields: QF[key].map((f) => ({
+      id: f.id,
+      type: f.type || 'text',
+      label: f[lang] || f.en,
+      options: f.opts || [],
+    })),
+  }));
+}
+
 const DEFAULTS = { mode: 'upload', fields: {}, sectionsDone: {}, file: null, fileName: '', submitted: false, submittedAt: null, submittedBy: null };
 const MAX_FILE_MB = 5;
 
@@ -25,9 +52,13 @@ function compressImage(dataUrl, maxWidth = 1200) {
 }
 
 export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
-  const { t, lang, user, users } = useApp();
+  const { t, lang, user, users, questionnaireTemplate } = useApp();
+  const langKey = ['en', 'fr', 'ki'].includes(lang) ? lang : 'en';
+  const sections = buildSections(questionnaireTemplate?.content, langKey, t.qsec);
+
   const { data, update, save, submit, flash } = useStepData(patientId, 'questionnaire', DEFAULTS);
-  const [open, setOpen] = useState({ A: true, B: false, C: false, D: false, E: false, F: false });
+  const initialOpen = sections.reduce((acc, s, i) => ({ ...acc, [s.key]: i === 0 }), {});
+  const [open, setOpen] = useState(initialOpen);
   const [showDetails, setShowDetails] = useState(false);
   const [fileErr, setFileErr] = useState('');
   const fileRef = useRef(null);
@@ -51,8 +82,8 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
     };
     rd.readAsDataURL(f);
   };
-  const getL = (f) => f[lang] || f.en;
   const done = Object.keys(data.sectionsDone).filter((k) => data.sectionsDone[k]).length;
+  const totalSections = sections.length;
 
   const doSubmit = async () => {
     await submit(user?.id, user?.name);
@@ -100,9 +131,9 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
                 {submitter && <span> &middot; By: {submitter}</span>}
               </div>
               <div className="fc gap6 mb12" style={{ flexWrap: 'wrap' }}>
-                {Object.keys(QF).map((s) => (
-                  <span key={s} className={`badge ${data.sectionsDone[s] ? 'b-ok' : 'b-muted'}`}>
-                    {data.sectionsDone[s] ? '\u2713 ' : ''}{s} &mdash; {t.qsec[s].split(' \u2014 ')[1]}
+                {sections.map((s) => (
+                  <span key={s.key} className={`badge ${data.sectionsDone[s.key] ? 'b-ok' : 'b-muted'}`}>
+                    {data.sectionsDone[s.key] ? '\u2713 ' : ''}{s.label}
                   </span>
                 ))}
               </div>
@@ -111,23 +142,23 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
             {/* Show filled data in read-only */}
             {data.mode === 'fill' && Object.keys(data.fields).length > 0 && (
               <>
-                {Object.keys(QF).map((s) => (
-                  <div className="acc" key={s}>
-                    <div className="acc-h" onClick={() => setOpen((p) => ({ ...p, [s]: !p[s] }))}>
-                      <span className="acc-t">{t.qsec[s]}</span>
+                {sections.map((s) => (
+                  <div className="acc" key={s.key}>
+                    <div className="acc-h" onClick={() => setOpen((p) => ({ ...p, [s.key]: !p[s.key] }))}>
+                      <span className="acc-t">{s.label}</span>
                       <div className="fc gap8">
-                        {data.sectionsDone[s] ? <span className="badge b-ok">&#10003;</span> : <span className="badge b-muted">&mdash;</span>}
-                        <span style={{ color: 'var(--tx3)', fontSize: '.78rem' }}>{open[s] ? '\u25B2' : '\u25BC'}</span>
+                        {data.sectionsDone[s.key] ? <span className="badge b-ok">&#10003;</span> : <span className="badge b-muted">&mdash;</span>}
+                        <span style={{ color: 'var(--tx3)', fontSize: '.78rem' }}>{open[s.key] ? '\u25B2' : '\u25BC'}</span>
                       </div>
                     </div>
-                    {open[s] && (
+                    {open[s.key] && (
                       <div className="acc-b">
-                        {QF[s].map((f) => {
+                        {s.fields.map((f) => {
                           const val = data.fields[f.id];
                           if (!val) return null;
                           return (
                             <div key={f.id} className="mb8">
-                              <div style={{ fontSize: '.75rem', color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{getL(f)}</div>
+                              <div style={{ fontSize: '.75rem', color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 2 }}>{f.label}</div>
                               <div style={{ fontSize: '.88rem', color: 'var(--tx)', padding: '4px 0' }}>{val}</div>
                             </div>
                           );
@@ -156,13 +187,13 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
       <div className="card-flat mb12">
         <div className="fb mb8">
           <span style={{ fontSize: '.85rem', fontWeight: 600, color: 'var(--tx2)' }}>{t.q.progress}</span>
-          <span style={{ fontSize: '.88rem', fontWeight: 700, color: 'var(--ac)' }}>{done}/6</span>
+          <span style={{ fontSize: '.88rem', fontWeight: 700, color: 'var(--ac)' }}>{done}/{totalSections}</span>
         </div>
-        <div className="prog"><div className="pfill" style={{ width: `${(done / 6) * 100}%` }} /></div>
+        <div className="prog"><div className="pfill" style={{ width: `${totalSections ? (done / totalSections) * 100 : 0}%` }} /></div>
         <div className="fc gap6 mt12" style={{ flexWrap: 'wrap' }}>
-          {Object.keys(QF).map((s) => (
-            <span key={s} className={`badge ${data.sectionsDone[s] ? 'b-ok' : 'b-muted'}`}>
-              {data.sectionsDone[s] ? '\u2713 ' : ''}{s}
+          {sections.map((s) => (
+            <span key={s.key} className={`badge ${data.sectionsDone[s.key] ? 'b-ok' : 'b-muted'}`}>
+              {data.sectionsDone[s.key] ? '\u2713 ' : ''}{s.key}
             </span>
           ))}
         </div>
@@ -186,34 +217,34 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
           {data.file && <FileViewer file={data.file} fileName={data.fileName} />}
           <hr className="divider" />
           <div className="ct" style={{ marginBottom: 10 }}>{t.q.confirmSec}</div>
-          {Object.keys(QF).map((s) => (
-            <div key={s} className="fc gap8 mb8">
+          {sections.map((s) => (
+            <div key={s.key} className="fc gap8 mb8">
               {!readOnly
-                ? <input type="checkbox" checked={!!data.sectionsDone[s]} onChange={(e) => update({ sectionsDone: { ...data.sectionsDone, [s]: e.target.checked } })} style={{ accentColor: 'var(--ac)' }} />
-                : <span className={`dot-${data.sectionsDone[s] ? 'ok' : 'muted'}`} />}
-              <span style={{ fontSize: '.88rem', color: data.sectionsDone[s] ? 'var(--tx)' : 'var(--tx2)' }}>{t.qsec[s]}</span>
-              {data.sectionsDone[s] && <span className="badge b-ok">&#10003;</span>}
+                ? <input type="checkbox" checked={!!data.sectionsDone[s.key]} onChange={(e) => update({ sectionsDone: { ...data.sectionsDone, [s.key]: e.target.checked } })} style={{ accentColor: 'var(--ac)' }} />
+                : <span className={`dot-${data.sectionsDone[s.key] ? 'ok' : 'muted'}`} />}
+              <span style={{ fontSize: '.88rem', color: data.sectionsDone[s.key] ? 'var(--tx)' : 'var(--tx2)' }}>{s.label}</span>
+              {data.sectionsDone[s.key] && <span className="badge b-ok">&#10003;</span>}
             </div>
           ))}
         </div>
       ) : (
         <>
-          {Object.keys(QF).map((s) => (
-            <div className="acc" key={s}>
-              <div className="acc-h" onClick={() => setOpen((p) => ({ ...p, [s]: !p[s] }))}>
-                <span className="acc-t">{t.qsec[s]}</span>
+          {sections.map((s) => (
+            <div className="acc" key={s.key}>
+              <div className="acc-h" onClick={() => setOpen((p) => ({ ...p, [s.key]: !p[s.key] }))}>
+                <span className="acc-t">{s.label}</span>
                 <div className="fc gap8">
-                  {data.sectionsDone[s] ? <span className="badge b-ok">&#10003;</span> : <span className="badge b-muted">&mdash;</span>}
-                  <span style={{ color: 'var(--tx3)', fontSize: '.78rem' }}>{open[s] ? '\u25B2' : '\u25BC'}</span>
+                  {data.sectionsDone[s.key] ? <span className="badge b-ok">&#10003;</span> : <span className="badge b-muted">&mdash;</span>}
+                  <span style={{ color: 'var(--tx3)', fontSize: '.78rem' }}>{open[s.key] ? '\u25B2' : '\u25BC'}</span>
                 </div>
               </div>
-              {open[s] && (
+              {open[s.key] && (
                 <div className="acc-b">
-                  {QF[s].map((f) => (
+                  {s.fields.map((f) => (
                     <div className="f" key={f.id}>
-                      <label className="lbl">{getL(f)}</label>
+                      <label className="lbl">{f.label}</label>
                       {f.type === 'select'
-                        ? <select className="sel" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly}><option value="">&mdash;</option>{f.opts.map((o) => <option key={o}>{o}</option>)}</select>
+                        ? <select className="sel" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly}><option value="">&mdash;</option>{f.options.map((o) => <option key={o}>{o}</option>)}</select>
                         : f.type === 'textarea'
                           ? <textarea className="tea" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly} />
                           : <input type={f.type} className="inp" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly} />}
@@ -221,7 +252,7 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
                   ))}
                   {!readOnly && (
                     <label className="cbox mt8">
-                      <input type="checkbox" checked={!!data.sectionsDone[s]} onChange={(e) => update({ sectionsDone: { ...data.sectionsDone, [s]: e.target.checked } })} />
+                      <input type="checkbox" checked={!!data.sectionsDone[s.key]} onChange={(e) => update({ sectionsDone: { ...data.sectionsDone, [s.key]: e.target.checked } })} />
                       <span className="cbox-lbl">{t.q.confirmSec}</span>
                     </label>
                   )}

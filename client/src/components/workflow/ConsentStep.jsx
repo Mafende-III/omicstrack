@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
 import { api } from '../../storage/engine.js';
-import { CONSENT_TEMPLATE } from '../../constants/consentTemplate.js';
+import { CONSENT_TEMPLATE as STATIC_CONSENT_TEMPLATE } from '../../constants/consentTemplate.js';
 import SigPad from '../shared/SigPad.jsx';
 import FileViewer from '../shared/FileViewer.jsx';
 
@@ -37,9 +37,11 @@ function compressImage(dataUrl, maxWidth = 1200) {
 }
 
 export default function ConsentStep({ patientId, readOnly, onComplete }) {
-  const { t, lang, user, users, patients } = useApp();
+  const { t, lang, user, users, patients, consentTemplate } = useApp();
   const langKey = ['en', 'fr', 'ki'].includes(lang) ? lang : 'en';
-  const tpl = CONSENT_TEMPLATE[langKey];
+  // Prefer DB-managed template, fall back to bundled static template if API hasn't loaded yet
+  const templateContent = consentTemplate?.content || STATIC_CONSENT_TEMPLATE;
+  const tpl = templateContent[langKey] || templateContent.en;
   const { data, update, save, submit, flash } = useStepData(patientId, 'consent', DEFAULTS);
   const fileRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);

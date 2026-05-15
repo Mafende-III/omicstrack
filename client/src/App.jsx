@@ -8,12 +8,14 @@ import PatientList from './components/patients/PatientList.jsx';
 import PatientDetail from './components/patients/PatientDetail.jsx';
 import ShipmentHub from './components/shipments/ShipmentHub.jsx';
 import UserManagement from './components/users/UserManagement.jsx';
+import FormsManagement from './components/admin/FormsManagement.jsx';
 
 const VIEW_ACCESS = {
   dashboard: ['admin', 'entry', 'viewer', 'liege'],
   patients: ['admin', 'entry', 'viewer', 'liege'],
   shipments: ['admin', 'entry', 'liege'],
   users: ['admin'],
+  forms: ['admin'],
 };
 
 function AppContent() {
@@ -79,6 +81,8 @@ function AppContent() {
           <ShipmentHub onViewPatient={handleViewPatient} />
         ) : safeView === 'users' ? (
           <UserManagement />
+        ) : safeView === 'forms' ? (
+          <FormsManagement />
         ) : null}
       </div>
     </div>

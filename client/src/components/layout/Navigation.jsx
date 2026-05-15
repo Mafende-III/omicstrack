@@ -9,6 +9,7 @@ export default function Navigation({ view, setView }) {
     { k: 'dashboard', l: t.nav.dash, icon: '\u25A6' },
     { k: 'patients', l: t.nav.patients, icon: '\u2630' },
     ...(['admin', 'entry', 'liege'].includes(role) ? [{ k: 'shipments', l: t.nav.shipments, icon: '\u2708' }] : []),
+    ...(role === 'admin' ? [{ k: 'forms', l: t.nav.forms, icon: '\u270e' }] : []),
     ...(role === 'admin' ? [{ k: 'users', l: t.nav.users, icon: '\u2605' }] : []),
   ];
 

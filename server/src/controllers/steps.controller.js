@@ -110,6 +110,16 @@ export async function submitStep(req, res) {
   const existing = await db(table).where('patient_id', patientId).first();
   const now = new Date();
 
+  // Bind to current active template version (consent + questionnaire only).
+  // This snapshot ensures the signed record always refers to what was actually shown,
+  // even if admin publishes a new version afterwards.
+  let templateVersionId = null;
+  if (step === 'consent' || step === 'questionnaire') {
+    const tplTable = step === 'consent' ? 'consent_templates' : 'questionnaire_templates';
+    const active = await db(tplTable).where('is_active', true).first();
+    templateVersionId = active?.id || null;
+  }
+
   if (existing) {
     if (existing.submitted) {
       return res.status(400).json({ error: 'Step already submitted' });
@@ -121,6 +131,7 @@ export async function submitStep(req, res) {
     updates.submitted_at = now;
     updates.submitted_by = req.user.id;
     updates.updated_at = now;
+    if (templateVersionId) updates.template_version_id = templateVersionId;
     await db(table).where('patient_id', patientId).update(updates);
   } else {
     const data = req.body || {};
@@ -130,6 +141,7 @@ export async function submitStep(req, res) {
     inserts.submitted_by = req.user.id;
     inserts.created_at = now;
     inserts.updated_at = now;
+    if (templateVersionId) inserts.template_version_id = templateVersionId;
     await db(table).insert(inserts);
   }
 
@@ -159,13 +171,16 @@ export async function submitStep(req, res) {
   res.json(STEP_FORMATTERS[step](row));
 }
 
-// Generate and store PDF for consent or questionnaire step
+// Generate and store PDF for consent or questionnaire step.
+// Uses the historical template version the step was bound to (if any),
+// falling back to the current active version, then to the static defaults.
 async function generateStepPdf(step, patientId, patient, actor, lang = 'en') {
   if (step === 'consent') {
     const row = await db('consent_steps').where('patient_id', patientId).first();
     if (!row) return;
 
-    const tpl = CONSENT_TEMPLATE[lang] || CONSENT_TEMPLATE.en;
+    const content = await loadConsentTemplateContent(row.template_version_id);
+    const tpl = content?.[lang] || content?.en || CONSENT_TEMPLATE.en;
 
     const pdfBuffer = await generateConsentPdf({
       title: tpl.title,
@@ -196,11 +211,8 @@ async function generateStepPdf(step, patientId, patient, actor, lang = 'en') {
 
     const fields = typeof row.fields === 'string' ? JSON.parse(row.fields) : (row.fields || {});
 
-    // Build section defs with labels
-    const sectionDefs = {};
-    for (const [sectionKey, defs] of Object.entries(QF)) {
-      sectionDefs[sectionKey] = defs.map((d) => ({ id: d.id, label: d.en }));
-    }
+    const content = await loadQuestionnaireTemplateContent(row.template_version_id);
+    const sectionDefs = buildQuestionnaireSectionDefs(content, lang);
 
     const pdfBuffer = await generateQuestionnairePdf({
       patientCode: patient.code,
@@ -214,6 +226,51 @@ async function generateStepPdf(step, patientId, patient, actor, lang = 'en') {
     const base64Pdf = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
     await db('questionnaire_steps').where('patient_id', patientId).update({ generated_pdf: base64Pdf });
   }
+}
+
+async function loadConsentTemplateContent(templateVersionId) {
+  let row;
+  if (templateVersionId) {
+    row = await db('consent_templates').where('id', templateVersionId).first();
+  }
+  if (!row) {
+    row = await db('consent_templates').where('is_active', true).first();
+  }
+  if (!row) return null;
+  return typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
+}
+
+async function loadQuestionnaireTemplateContent(templateVersionId) {
+  let row;
+  if (templateVersionId) {
+    row = await db('questionnaire_templates').where('id', templateVersionId).first();
+  }
+  if (!row) {
+    row = await db('questionnaire_templates').where('is_active', true).first();
+  }
+  if (!row) return null;
+  return typeof row.content === 'string' ? JSON.parse(row.content) : row.content;
+}
+
+// Converts DB questionnaire content into the shape generateQuestionnairePdf expects:
+// { A: [{ id, label }], B: [...], ... }
+function buildQuestionnaireSectionDefs(content, lang = 'en') {
+  if (!content?.sections) {
+    // Fallback to static QF (English labels)
+    const out = {};
+    for (const [k, defs] of Object.entries(QF)) {
+      out[k] = defs.map((d) => ({ id: d.id, label: d.en }));
+    }
+    return out;
+  }
+  const out = {};
+  for (const section of content.sections) {
+    out[section.key] = section.fields.map((f) => ({
+      id: f.id,
+      label: f.labels?.[lang] || f.labels?.en || f.id,
+    }));
+  }
+  return out;
 }
 
 // Build column updates from request data for each step type

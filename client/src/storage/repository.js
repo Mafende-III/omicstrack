@@ -98,6 +98,21 @@ export const PrefsRepo = {
   },
 };
 
+export const TemplateRepo = {
+  async getActive(kind) {
+    return api.get(`/templates/${kind}/active`);
+  },
+  async listVersions(kind) {
+    return api.get(`/templates/${kind}/versions`);
+  },
+  async getVersion(kind, id) {
+    return api.get(`/templates/${kind}/${id}`);
+  },
+  async publishVersion(kind, content) {
+    return api.post(`/templates/${kind}`, { content });
+  },
+};
+
 export const AuditRepo = {
   log() {},
   async getAll() {

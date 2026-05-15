@@ -13,6 +13,7 @@ import shipmentsRoutes from './routes/shipments.routes.js';
 import auditRoutes from './routes/audit.routes.js';
 import filesRoutes from './routes/files.routes.js';
 import preferencesRoutes from './routes/preferences.routes.js';
+import templatesRoutes from './routes/templates.routes.js';
 
 const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api/v1/shipments', shipmentsRoutes);
 app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/files', filesRoutes);
 app.use('/api/v1/preferences', preferencesRoutes);
+app.use('/api/v1/templates', templatesRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
