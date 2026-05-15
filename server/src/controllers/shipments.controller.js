@@ -1,5 +1,6 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/audit.service.js';
+import { stripPii, stripPiiFromSample } from '../middleware/piiFilter.js';
 
 export async function getShipments(req, res) {
   const shipments = await db('shipments').orderBy('created_at', 'desc');
@@ -12,10 +13,11 @@ export async function getShipments(req, res) {
       .select(
         'shipment_samples.*',
         'patients.code as patientCode',
-        'patients.name as patientName'
+        'patients.name as patientName',
+        'patients.facility as facility'
       );
 
-    result.push(formatShipment(s, samples));
+    result.push(formatShipment(s, samples, req.user.canSeePii));
   }
 
   res.json(result);
@@ -35,7 +37,7 @@ export async function getShipment(req, res) {
       'patients.name as patientName'
     );
 
-  res.json(formatShipment(shipment, samples));
+  res.json(formatShipment(shipment, samples, req.user.canSeePii));
 }
 
 export async function createShipment(req, res) {
@@ -106,7 +108,7 @@ export async function createShipment(req, res) {
       .join('patients', 'patients.id', 'shipment_samples.patient_id')
       .select('shipment_samples.*', 'patients.code as patientCode', 'patients.name as patientName');
 
-    res.status(201).json(formatShipment(shipment, sampleRows));
+    res.status(201).json(formatShipment(shipment, sampleRows, req.user.canSeePii));
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -205,7 +207,7 @@ export async function receiveShipment(req, res) {
       .join('patients', 'patients.id', 'shipment_samples.patient_id')
       .select('shipment_samples.*', 'patients.code as patientCode', 'patients.name as patientName');
 
-    res.json(formatShipment(updatedShipment, sampleRows));
+    res.json(formatShipment(updatedShipment, sampleRows, req.user.canSeePii));
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -297,7 +299,7 @@ export async function getShippablePatients(req, res) {
     const available = pbmc.vials - alreadyShipped;
 
     if (available > 0) {
-      result.push({
+      result.push(stripPii({
         id: p.id,
         code: p.code,
         name: p.name,
@@ -305,14 +307,14 @@ export async function getShippablePatients(req, res) {
         leukemiaType: p.leukemia_type,
         vialsTotal: pbmc.vials,
         vialsAvailable: available,
-      });
+      }, req.user.canSeePii));
     }
   }
 
   res.json(result);
 }
 
-function formatShipment(s, samples = []) {
+function formatShipment(s, samples = [], canSeePii = true) {
   return {
     id: s.id,
     shipDate: s.ship_date,
@@ -323,10 +325,11 @@ function formatShipment(s, samples = []) {
     receivedBy: s.received_by,
     receivedAt: s.received_at,
     receiptNotes: s.receipt_notes,
-    samples: samples.map((sm) => ({
+    samples: samples.map((sm) => stripPiiFromSample({
       patientId: sm.patient_id,
       patientCode: sm.patientCode,
       patientName: sm.patientName,
+      facility: sm.facility,
       vialsShipped: sm.vials_shipped,
       received: sm.received,
       vialsReceived: sm.vials_received,
@@ -334,6 +337,6 @@ function formatShipment(s, samples = []) {
       qcCellCount: sm.qc_cell_count,
       qcViability: sm.qc_viability,
       qcNotes: sm.qc_notes,
-    })),
+    }, canSeePii)),
   };
 }

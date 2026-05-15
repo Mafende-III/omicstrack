@@ -17,6 +17,7 @@ export const CreateUserSchema = z.object({
   password: z.string().min(4).max(200),
   role: z.enum(ROLES),
   sites: z.array(z.enum(FACILITIES)).default([]),
+  canSeePii: z.boolean().default(true),
 });
 
 export const CreatePatientSchema = z.object({
@@ -40,10 +41,11 @@ export const UpdatePatientSchema = z.object({
 export const ConsentStepSchema = z.object({
   mode: z.enum(['upload', 'fill']).optional(),
   confirmed: z.boolean().optional(),
-  patientSignaturePath: z.string().nullable().optional(),
-  researcherSignaturePath: z.string().nullable().optional(),
-  filePath: z.string().nullable().optional(),
+  patientSignature: z.string().nullable().optional(),
+  researcherSignature: z.string().nullable().optional(),
+  file: z.string().nullable().optional(),
   fileName: z.string().nullable().optional(),
+  lang: z.enum(['en', 'fr', 'ki']).optional(),
 }).passthrough();
 
 export const QuestionnaireStepSchema = z.object({

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
+import { api } from '../../storage/engine.js';
 import { QF } from '../../constants/questionnaire.js';
 import FileViewer from '../shared/FileViewer.jsx';
 
@@ -60,11 +61,32 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
 
   const submitter = data.submittedBy ? users.find((u) => u.id === data.submittedBy)?.name : null;
 
+  const downloadPdf = async () => {
+    try {
+      const blob = await api.getBlob(`/steps/${patientId}/questionnaire/pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `questionnaire_${patientId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // PDF not available
+    }
+  };
+
   if (data.submitted) {
     return (
       <div className="fade">
         <div className="al al-ok fc gap8" style={{ justifyContent: 'space-between' }}>
-          <span>&#10003; {t.q.done}</span>
+          <div className="fc gap8">
+            <span>&#10003; {t.q.done}</span>
+            {data.hasGeneratedPdf && (
+              <button className="btn btn-bd btn-sm" onClick={downloadPdf}>
+                Download PDF
+              </button>
+            )}
+          </div>
           <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
             {showDetails ? 'Hide' : 'View'} Details
           </button>

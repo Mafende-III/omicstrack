@@ -1,5 +1,8 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/audit.service.js';
+import { generateConsentPdf, generateQuestionnairePdf } from '../services/pdfGenerator.js';
+import { CONSENT_TEMPLATE } from '../constants/consentTemplate.js';
+import { QF } from '../constants/questionnaire.js';
 
 const STEP_TABLES = {
   consent: 'consent_steps',
@@ -141,8 +144,76 @@ export async function submitStep(req, res) {
     ipAddress: req.ip,
   });
 
+  // Generate PDF for consent and questionnaire on submit
+  if (step === 'consent' || step === 'questionnaire') {
+    try {
+      const lang = ['en', 'fr', 'ki'].includes(req.body?.lang) ? req.body.lang : 'en';
+      await generateStepPdf(step, patientId, patient, actor, lang);
+    } catch (err) {
+      console.error(`PDF generation failed for ${step}:`, err.message);
+      // Non-blocking — step is still submitted even if PDF fails
+    }
+  }
+
   const row = await db(table).where('patient_id', patientId).first();
   res.json(STEP_FORMATTERS[step](row));
+}
+
+// Generate and store PDF for consent or questionnaire step
+async function generateStepPdf(step, patientId, patient, actor, lang = 'en') {
+  if (step === 'consent') {
+    const row = await db('consent_steps').where('patient_id', patientId).first();
+    if (!row) return;
+
+    const tpl = CONSENT_TEMPLATE[lang] || CONSENT_TEMPLATE.en;
+
+    const pdfBuffer = await generateConsentPdf({
+      title: tpl.title,
+      studyTitle: tpl.studyTitle,
+      sections: tpl.sections,
+      consentStatement: tpl.consentStatement,
+      consentSectionLabel: tpl.consentSectionLabel,
+      participantName: patient.name,
+      participantLabel: tpl.participantLabel,
+      researcherName: actor?.name || '',
+      researcherLabel: tpl.researcherLabel,
+      signatureAndDateLabel: tpl.signatureAndDate,
+      doneAtLabel: tpl.doneAt,
+      doneAtValue: patient.facility || '',
+      patientCode: patient.code,
+      patientSignatureBase64: row.patient_signature_path,
+      researcherSignatureBase64: row.researcher_signature_path,
+      signedDate: row.submitted_at ? new Date(row.submitted_at).toISOString().split('T')[0] : '',
+    });
+
+    const base64Pdf = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
+    await db('consent_steps').where('patient_id', patientId).update({ generated_pdf: base64Pdf });
+  }
+
+  if (step === 'questionnaire') {
+    const row = await db('questionnaire_steps').where('patient_id', patientId).first();
+    if (!row) return;
+
+    const fields = typeof row.fields === 'string' ? JSON.parse(row.fields) : (row.fields || {});
+
+    // Build section defs with labels
+    const sectionDefs = {};
+    for (const [sectionKey, defs] of Object.entries(QF)) {
+      sectionDefs[sectionKey] = defs.map((d) => ({ id: d.id, label: d.en }));
+    }
+
+    const pdfBuffer = await generateQuestionnairePdf({
+      patientCode: patient.code,
+      patientName: patient.name,
+      sectionDefs,
+      answers: fields,
+      submittedAt: row.submitted_at ? new Date(row.submitted_at).toISOString().split('T')[0] : '',
+      submittedBy: actor?.name || '',
+    });
+
+    const base64Pdf = `data:application/pdf;base64,${pdfBuffer.toString('base64')}`;
+    await db('questionnaire_steps').where('patient_id', patientId).update({ generated_pdf: base64Pdf });
+  }
 }
 
 // Build column updates from request data for each step type
@@ -152,9 +223,9 @@ function buildUpdates(step, data) {
       return pickDefined({
         mode: data.mode,
         confirmed: data.confirmed,
-        patient_signature_path: data.patientSignaturePath,
-        researcher_signature_path: data.researcherSignaturePath,
-        file_path: data.filePath,
+        patient_signature_path: data.patientSignature ?? data.patientSignaturePath,
+        researcher_signature_path: data.researcherSignature ?? data.researcherSignaturePath,
+        file_path: data.file ?? data.filePath,
         file_name: data.fileName,
       });
     case 'questionnaire':
@@ -202,18 +273,46 @@ function pickDefined(obj) {
   return result;
 }
 
+export async function downloadStepPdf(req, res) {
+  const { patientId, step } = req.params;
+  if (step !== 'consent' && step !== 'questionnaire') {
+    return res.status(400).json({ error: 'PDF only available for consent and questionnaire steps' });
+  }
+
+  const table = STEP_TABLES[step];
+  const row = await db(table).where('patient_id', patientId).first();
+  if (!row?.generated_pdf) {
+    return res.status(404).json({ error: 'No generated PDF found' });
+  }
+
+  // Extract base64 data
+  const match = row.generated_pdf.match(/^data:application\/pdf;base64,(.+)$/);
+  if (!match) {
+    return res.status(500).json({ error: 'Invalid PDF data' });
+  }
+
+  const patient = await db('patients').where('id', patientId).first();
+  const filename = `${step}_${patient?.code || patientId}.pdf`;
+
+  const pdfBuffer = Buffer.from(match[1], 'base64');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(pdfBuffer);
+}
+
 function formatConsent(row) {
   if (!row) return null;
   return {
     mode: row.mode,
     confirmed: row.confirmed,
-    patientSignaturePath: row.patient_signature_path,
-    researcherSignaturePath: row.researcher_signature_path,
-    filePath: row.file_path,
+    patientSignature: row.patient_signature_path,
+    researcherSignature: row.researcher_signature_path,
+    file: row.file_path,
     fileName: row.file_name,
     submitted: row.submitted,
     submittedAt: row.submitted_at,
     submittedBy: row.submitted_by,
+    hasGeneratedPdf: !!row.generated_pdf,
   };
 }
 
@@ -228,6 +327,7 @@ function formatQuestionnaire(row) {
     submitted: row.submitted,
     submittedAt: row.submitted_at,
     submittedBy: row.submitted_by,
+    hasGeneratedPdf: !!row.generated_pdf,
   };
 }
 

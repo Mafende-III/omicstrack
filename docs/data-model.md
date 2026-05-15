@@ -41,6 +41,7 @@
   password: string         // Plaintext (MVP only)
   role: 'admin' | 'entry' | 'viewer' | 'liege'
   sites: string[]          // Assigned facilities (relevant for 'entry' role)
+  canSeePii: boolean       // Can view patient PII (name, age, facility). Default: true, liege default: false
   isDefault: boolean       // Seed users cannot be deleted
   createdAt: string        // ISO 8601
   createdBy: string        // userId of creator
@@ -78,6 +79,7 @@
   submitted: boolean
   submittedAt: string | null        // ISO 8601
   submittedBy: string | null        // userId
+  hasGeneratedPdf: boolean          // true if PDF was generated on submit
 }
 ```
 
@@ -106,6 +108,7 @@
   submitted: boolean
   submittedAt: string | null
   submittedBy: string | null
+  hasGeneratedPdf: boolean          // true if PDF was generated on submit
 }
 ```
 

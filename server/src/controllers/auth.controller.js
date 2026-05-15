@@ -7,7 +7,7 @@ import { logAudit } from '../services/audit.service.js';
 
 function generateAccessToken(user) {
   return jwt.sign(
-    { sub: user.id, role: user.role, sites: user.sites },
+    { sub: user.id, role: user.role, sites: user.sites, canSeePii: user.can_see_pii !== false },
     env.JWT_SECRET,
     { expiresIn: env.JWT_ACCESS_EXPIRY }
   );
@@ -81,6 +81,7 @@ export async function login(req, res) {
       role: user.role,
       sites: user.sites,
       isDefault: user.is_default,
+      canSeePii: user.can_see_pii !== false,
     },
   });
 }
@@ -149,5 +150,6 @@ export async function me(req, res) {
     role: user.role,
     sites: user.sites,
     isDefault: user.is_default,
+    canSeePii: user.can_see_pii !== false,
   });
 }

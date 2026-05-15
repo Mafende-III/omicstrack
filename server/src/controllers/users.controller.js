@@ -4,14 +4,14 @@ import { logAudit } from '../services/audit.service.js';
 
 export async function getUsers(req, res) {
   const users = await db('users')
-    .select('id', 'name', 'username', 'role', 'sites', 'is_default', 'created_at', 'created_by')
+    .select('id', 'name', 'username', 'role', 'sites', 'can_see_pii', 'is_default', 'created_at', 'created_by')
     .orderBy('created_at', 'asc');
 
   res.json(users.map(formatUser));
 }
 
 export async function createUser(req, res) {
-  const { name, username, password, role, sites } = req.validated;
+  const { name, username, password, role, sites, canSeePii } = req.validated;
 
   const existing = await db('users').where('username', username).first();
   if (existing) {
@@ -27,6 +27,7 @@ export async function createUser(req, res) {
       password_hash: passwordHash,
       role,
       sites: sites || [],
+      can_see_pii: canSeePii !== false,
       is_default: false,
       created_by: req.user.id,
     })
@@ -81,6 +82,7 @@ function formatUser(u) {
     username: u.username,
     role: u.role,
     sites: u.sites,
+    canSeePii: u.can_see_pii !== false,
     isDefault: u.is_default,
     createdAt: u.created_at,
     createdBy: u.created_by,

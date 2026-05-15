@@ -14,6 +14,7 @@ export function authenticate(req, res, next) {
       id: payload.sub,
       role: payload.role,
       sites: payload.sites || [],
+      canSeePii: payload.canSeePii !== false,
     };
     next();
   } catch (err) {

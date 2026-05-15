@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
+import { canSeeField } from '../../utils/pii.js';
 
 export default function CreateShipmentForm({ shippablePatients, onSubmit, onCancel }) {
-  const { t } = useApp();
+  const { t, user } = useApp();
   const ts = t.shipment;
 
   const [selected, setSelected] = useState({});
@@ -102,10 +103,10 @@ export default function CreateShipmentForm({ shippablePatients, onSubmit, onCanc
                 <div style={{ flex: 1 }}>
                   <div className="fc gap6 mb4">
                     <span className="code-pill">{p.code}</span>
-                    <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{p.name}</span>
+                    {canSeeField(user?.canSeePii, 'name') && p.name && <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{p.name}</span>}
                   </div>
                   <div style={{ fontSize: '.78rem', color: 'var(--tx2)' }}>
-                    {p.facility} &middot; {p.vialsAvailable} {ts.vialsAvailable}
+                    {p.facility && <>{p.facility} &middot; </>}{p.vialsAvailable} {ts.vialsAvailable}
                   </div>
                 </div>
                 {isSelected && (

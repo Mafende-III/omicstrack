@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { SITES, LK_TYPES } from '../../constants/index.js';
+import { canSeeField } from '../../utils/pii.js';
 import AddPatientForm from './AddPatientForm.jsx';
 
 export default function PatientList({ onSelect }) {
@@ -77,15 +78,17 @@ export default function PatientList({ onSelect }) {
           <option value="">{t.dash.byType || 'All Types'}</option>
           {LK_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
-        <select
-          className="sel"
-          style={{ width: 'auto', minWidth: 130, padding: '6px 10px', fontSize: '.82rem' }}
-          value={siteFilter}
-          onChange={(e) => setSiteFilter(e.target.value)}
-        >
-          <option value="">{t.dash.byFac || 'All Facilities'}</option>
-          {SITES.map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
+        {canSeeField(user?.canSeePii, 'facility') && (
+          <select
+            className="sel"
+            style={{ width: 'auto', minWidth: 130, padding: '6px 10px', fontSize: '.82rem' }}
+            value={siteFilter}
+            onChange={(e) => setSiteFilter(e.target.value)}
+          >
+            <option value="">{t.dash.byFac || 'All Facilities'}</option>
+            {SITES.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        )}
         <select
           className="sel"
           style={{ width: 'auto', minWidth: 140, padding: '6px 10px', fontSize: '.82rem' }}
@@ -118,10 +121,10 @@ export default function PatientList({ onSelect }) {
           <div>
             <div className="fc gap6 mb6">
               <span className="code-pill">{p.code}</span>
-              <span className="pt-name">{p.name}</span>
+              {canSeeField(user?.canSeePii, 'name') && <span className="pt-name">{p.name}</span>}
             </div>
             <div className="pt-meta">
-              {p.age} yrs &middot; {p.facility} &middot; {p.enrolledAt?.split('T')[0]}
+              {p.age != null && <>{p.age} yrs &middot; </>}{p.facility && <>{p.facility} &middot; </>}{p.enrolledAt?.split('T')[0]}
             </div>
           </div>
           <div className="fc gap8">

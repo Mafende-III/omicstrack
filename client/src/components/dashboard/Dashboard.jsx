@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { api } from '../../storage/engine.js';
 import { STEP_KEYS } from '../../constants/index.js';
+import { canSeeField } from '../../utils/pii.js';
 import ShipmentPipeline from './ShipmentPipeline.jsx';
 
 export default function Dashboard({ onViewPatient }) {
@@ -20,9 +21,9 @@ export default function Dashboard({ onViewPatient }) {
   }, [patients]);
 
   const onTx = patients.filter((p) => p.treatment === 'On Treatment').length;
-  const sites = [...new Set(patients.map((p) => p.facility))].length;
+  const sites = [...new Set(patients.map((p) => p.facility).filter(Boolean))].length;
   const byType = patients.reduce((a, p) => { a[p.leukemiaType] = (a[p.leukemiaType] || 0) + 1; return a; }, {});
-  const byFac = patients.reduce((a, p) => { a[p.facility] = (a[p.facility] || 0) + 1; return a; }, {});
+  const byFac = patients.reduce((a, p) => { if (p.facility) { a[p.facility] = (a[p.facility] || 0) + 1; } return a; }, {});
   const recent = [...patients].sort((a, b) => new Date(b.enrolledAt) - new Date(a.enrolledAt)).slice(0, 5);
 
   const wf = stats?.steps || { consent: 0, questionnaire: 0, collection: 0, pbmc: 0, transfer: 0 };
@@ -95,25 +96,27 @@ export default function Dashboard({ onViewPatient }) {
               </div>
             ))}
         </div>
-        <div className="card">
-          <div className="ct">{t.dash.byFac}</div>
-          {Object.entries(byFac).length === 0
-            ? <div style={{ color: 'var(--tx2)', fontSize: '.85rem' }}>&mdash;</div>
-            : Object.entries(byFac).map(([k, v]) => (
-              <div key={k} className="mb12">
-                <div className="fb" style={{ marginBottom: 4 }}>
-                  <span style={{ fontSize: '.85rem', fontWeight: 600 }}>{k}</span>
-                  <span className="badge b-muted">{v}</span>
+        {canSeeField(user?.canSeePii, 'facility') && (
+          <div className="card">
+            <div className="ct">{t.dash.byFac}</div>
+            {Object.entries(byFac).length === 0
+              ? <div style={{ color: 'var(--tx2)', fontSize: '.85rem' }}>&mdash;</div>
+              : Object.entries(byFac).map(([k, v]) => (
+                <div key={k} className="mb12">
+                  <div className="fb" style={{ marginBottom: 4 }}>
+                    <span style={{ fontSize: '.85rem', fontWeight: 600 }}>{k}</span>
+                    <span className="badge b-muted">{v}</span>
+                  </div>
+                  <div className="prog">
+                    <div className="pfill ok" style={{ width: `${(v / patients.length) * 100}%` }} />
+                  </div>
                 </div>
-                <div className="prog">
-                  <div className="pfill ok" style={{ width: `${(v / patients.length) * 100}%` }} />
-                </div>
-              </div>
-            ))}
-        </div>
+              ))}
+          </div>
+        )}
       </div>
 
-      {patients.length > 0 && (
+      {patients.length > 0 && canSeeField(user?.canSeePii, 'age') && (
         <div className="g2">
           <div className="card">
             <div className="ct">{t.dash.demographics || 'Demographics'}</div>
@@ -157,9 +160,9 @@ export default function Dashboard({ onViewPatient }) {
               <div>
                 <div className="fc gap6 mb6">
                   <span className="code-pill">{p.code}</span>
-                  <span style={{ fontWeight: 600, fontSize: '.9rem' }}>{p.name}</span>
+                  {canSeeField(user?.canSeePii, 'name') && <span style={{ fontWeight: 600, fontSize: '.9rem' }}>{p.name}</span>}
                 </div>
-                <div className="pt-meta">{p.facility} &middot; {p.enrolledAt?.split('T')[0]}</div>
+                <div className="pt-meta">{p.facility && <>{p.facility} &middot; </>}{p.enrolledAt?.split('T')[0]}</div>
               </div>
               <span className="badge b-ac">{p.leukemiaType}</span>
             </div>

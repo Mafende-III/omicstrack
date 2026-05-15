@@ -60,6 +60,37 @@
 | Remove user | Yes (non-default) | No | No | No |
 | Assign sites to entry user | Yes | No | No | No |
 
+## PII (Personal Identifiable Information) Access Control
+
+Patient personal data (name, age, facility) is controlled by a per-user `canSeePii` permission, configurable when creating users.
+
+### How It Works
+
+- **Server-side**: The `can_see_pii` boolean is stored in the users table and included in the JWT token. When `canSeePii` is `false`, the API strips `name`, `age`, and `facility` from patient responses (set to `null`).
+- **Client-side**: Components check `user.canSeePii` via the `canSeeField()` utility and hide the fields entirely (not shown as "null" — the UI elements simply don't render).
+- **Default**: All roles have PII access enabled except **liege**, which defaults to `false` (set during database migration).
+- **Configurable**: Admins can toggle this permission for any user via the "Can view patient personal data" checkbox in the User Management form.
+
+### Fields Controlled by PII Access
+
+| Field | canSeePii=true | canSeePii=false |
+|-------|----------------|-----------------|
+| Patient name | Visible | Hidden |
+| Patient age | Visible | Hidden |
+| Facility | Visible | Hidden |
+| Patient code | Always visible | Always visible |
+| Leukemia type | Always visible | Always visible |
+| Treatment status | Always visible | Always visible |
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `server/src/middleware/piiFilter.js` | `stripPii()`, `stripPiiFromSample()` — removes PII from API responses |
+| `server/src/middleware/auth.js` | Extracts `canSeePii` from JWT into `req.user` |
+| `server/src/db/migrations/003_add_can_see_pii.js` | Adds `can_see_pii` column to users table |
+| `client/src/utils/pii.js` | `canSeeField(canSeePii, field)` — UI field visibility check |
+
 ## Role-Specific UI Behavior
 
 ### Admin

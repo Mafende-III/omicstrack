@@ -73,6 +73,14 @@ export const api = {
     }
   },
 
+  async getBlob(path) {
+    const headers = {};
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+    const res = await fetch(`${API_BASE}${path}`, { headers, credentials: 'include' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.blob();
+  },
+
   get(path) { return this.request('GET', path); },
   post(path, body) { return this.request('POST', path, body); },
   put(path, body) { return this.request('PUT', path, body); },

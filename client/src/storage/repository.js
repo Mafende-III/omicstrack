@@ -62,6 +62,10 @@ export const StepRepo = {
   async saveTransfer(patientId, data) {
     return api.put(`/steps/${patientId}/transfer`, data);
   },
+
+  async submitStep(patientId, step, data) {
+    return api.post(`/steps/${patientId}/${step}/submit`, data);
+  },
 };
 
 export const ShipmentRepo = {

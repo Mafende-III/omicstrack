@@ -1,5 +1,6 @@
 import db from '../config/db.js';
 import { logAudit } from '../services/audit.service.js';
+import { stripPii } from '../middleware/piiFilter.js';
 
 export async function getPatients(req, res) {
   let query = db('patients').orderBy('enrolled_at', 'desc');
@@ -9,7 +10,7 @@ export async function getPatients(req, res) {
   }
 
   const patients = await query;
-  res.json(patients.map(formatPatient));
+  res.json(patients.map((p) => stripPii(formatPatient(p), req.user.canSeePii)));
 }
 
 export async function getPatient(req, res) {
@@ -34,7 +35,7 @@ export async function getPatient(req, res) {
   ]);
 
   res.json({
-    ...formatPatient(patient),
+    ...stripPii(formatPatient(patient), req.user.canSeePii),
     steps: {
       consent: !!consent?.submitted,
       questionnaire: !!questionnaire?.submitted,
@@ -84,7 +85,7 @@ export async function createPatient(req, res) {
     ipAddress: req.ip,
   });
 
-  res.status(201).json(formatPatient(patient));
+  res.status(201).json(stripPii(formatPatient(patient), req.user.canSeePii));
 }
 
 export async function updatePatient(req, res) {
@@ -132,7 +133,7 @@ export async function updatePatient(req, res) {
     ipAddress: req.ip,
   });
 
-  res.json(formatPatient(updated));
+  res.json(stripPii(formatPatient(updated), req.user.canSeePii));
 }
 
 export async function getDashboardStats(req, res) {
@@ -198,7 +199,7 @@ export async function getDashboardStats(req, res) {
   res.json({
     total: patients.length,
     byType,
-    byFacility,
+    byFacility: req.user.canSeePii ? byFacility : {},
     byTreatment,
     steps: {
       consent: parseInt(consentCount[0].c, 10),

@@ -2,11 +2,30 @@ import { useState, useEffect, useCallback } from 'react';
 import { StepRepo } from '../storage/repository.js';
 
 const REPO_MAP = {
-  consent: { get: (pid) => StepRepo.getConsent(pid), save: (pid, d) => StepRepo.saveConsent(pid, d) },
-  questionnaire: { get: (pid) => StepRepo.getQuestionnaire(pid), save: (pid, d) => StepRepo.saveQuestionnaire(pid, d) },
-  collection: { get: (pid) => StepRepo.getCollection(pid), save: (pid, d) => StepRepo.saveCollection(pid, d) },
-  pbmc: { get: (pid) => StepRepo.getPbmc(pid), save: (pid, d) => StepRepo.savePbmc(pid, d) },
-  transfer: { get: (pid) => StepRepo.getTransfer(pid), save: (pid, d) => StepRepo.saveTransfer(pid, d) },
+  consent: {
+    get: (pid) => StepRepo.getConsent(pid),
+    save: (pid, d) => StepRepo.saveConsent(pid, d),
+    submit: (pid, d) => StepRepo.submitStep(pid, 'consent', d),
+  },
+  questionnaire: {
+    get: (pid) => StepRepo.getQuestionnaire(pid),
+    save: (pid, d) => StepRepo.saveQuestionnaire(pid, d),
+    submit: (pid, d) => StepRepo.submitStep(pid, 'questionnaire', d),
+  },
+  collection: {
+    get: (pid) => StepRepo.getCollection(pid),
+    save: (pid, d) => StepRepo.saveCollection(pid, d),
+    submit: (pid, d) => StepRepo.submitStep(pid, 'collection', d),
+  },
+  pbmc: {
+    get: (pid) => StepRepo.getPbmc(pid),
+    save: (pid, d) => StepRepo.savePbmc(pid, d),
+    submit: (pid, d) => StepRepo.submitStep(pid, 'pbmc', d),
+  },
+  transfer: {
+    get: (pid) => StepRepo.getTransfer(pid),
+    save: (pid, d) => StepRepo.saveTransfer(pid, d),
+  },
 };
 
 export function useStepData(patientId, stepKey, defaultData) {
@@ -56,24 +75,39 @@ export function useStepData(patientId, stepKey, defaultData) {
     return toSave;
   }, [data, patientId, stepKey]);
 
-  const submit = useCallback(async (userId, userName) => {
+  const submit = useCallback(async (userId, userName, overrides = {}) => {
     const repo = REPO_MAP[stepKey];
     if (!repo) return;
-    const toSave = {
-      ...data,
-      submitted: true,
-      submittedAt: new Date().toISOString(),
-      submittedBy: userId,
-    };
-    setData(toSave);
+    const payload = { ...data, ...overrides };
     try {
+      if (repo.submit) {
+        const result = await repo.submit(patientId, payload);
+        const merged = {
+          ...payload,
+          ...result,
+          submitted: true,
+          submittedAt: result?.submittedAt || new Date().toISOString(),
+          submittedBy: result?.submittedBy || userId,
+        };
+        setData(merged);
+        setFlash(true);
+        setTimeout(() => setFlash(false), 2000);
+        return merged;
+      }
+      const toSave = {
+        ...payload,
+        submitted: true,
+        submittedAt: new Date().toISOString(),
+        submittedBy: userId,
+      };
+      setData(toSave);
       await repo.save(patientId, toSave);
+      setFlash(true);
+      setTimeout(() => setFlash(false), 2000);
+      return toSave;
     } catch (err) {
       console.error('Submit failed:', err);
     }
-    setFlash(true);
-    setTimeout(() => setFlash(false), 2000);
-    return toSave;
   }, [data, patientId, stepKey]);
 
   return { data, update, save, submit, flash, loading };

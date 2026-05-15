@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { api } from '../../storage/engine.js';
 import { STEP_KEYS, SITES, LK_TYPES } from '../../constants/index.js';
+import { canSeeField } from '../../utils/pii.js';
 import ConsentStep from '../workflow/ConsentStep.jsx';
 import QuestionnaireStep from '../workflow/QuestionnaireStep.jsx';
 import CollectionStep from '../workflow/CollectionStep.jsx';
@@ -94,16 +95,15 @@ export default function PatientDetail({ patient, onBack }) {
             <div>
               <div className="fc gap8 mb6">
                 <span className="code-pill">{patient.code}</span>
-                <span className="pt-bn">{patient.name}</span>
+                {canSeeField(user?.canSeePii, 'name') && <span className="pt-bn">{patient.name}</span>}
               </div>
               <div className="pt-bm">
-                <span>{patient.age} yrs</span>
-                <span>&middot;</span>
+                {patient.age != null && <><span>{patient.age} yrs</span><span>&middot;</span></>}
                 <span className={`badge ${patient.treatment === 'On Treatment' ? 'b-ok' : 'b-muted'}`}>
                   {patient.treatment === 'On Treatment' ? t.pt.onTx : t.pt.offTx}
                 </span>
                 <span className="badge b-ac">{patient.leukemiaType}</span>
-                <span className="badge b-muted">{patient.facility}</span>
+                {patient.facility && <span className="badge b-muted">{patient.facility}</span>}
                 <span style={{ color: 'var(--tx3)', fontSize: '.68rem' }}>
                   {t.pt.enrolled}: {patient.enrolledAt?.split('T')[0]}
                 </span>

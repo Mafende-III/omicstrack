@@ -5,7 +5,7 @@ import { SITES } from '../../constants/index.js';
 export default function UserManagement() {
   const { users, addUser, removeUser, t } = useApp();
   const [adding, setAdding] = useState(false);
-  const [f, setF] = useState({ name: '', username: '', password: '', role: 'entry', sites: [] });
+  const [f, setF] = useState({ name: '', username: '', password: '', role: 'entry', sites: [], canSeePii: true });
   const [err, setErr] = useState('');
 
   const u = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -23,7 +23,7 @@ export default function UserManagement() {
     try {
       await addUser(f);
       setAdding(false);
-      setF({ name: '', username: '', password: '', role: 'entry', sites: [] });
+      setF({ name: '', username: '', password: '', role: 'entry', sites: [], canSeePii: true });
       setErr('');
     } catch (e) {
       setErr(e.message || 'Failed to create user');
@@ -70,6 +70,10 @@ export default function UserManagement() {
               </div>
             </div>
           )}
+          <label className="cbox mt12">
+            <input type="checkbox" checked={f.canSeePii} onChange={(e) => u('canSeePii', e.target.checked)} />
+            <span className="cbox-lbl">{t.users.canSeePii || 'Can view patient personal data (name, age, facility)'}</span>
+          </label>
           <div className="fc gap8 mt12" style={{ justifyContent: 'flex-end' }}>
             <button className="btn btn-bd" onClick={() => { setAdding(false); setErr(''); }}>{t.pt.cancel}</button>
             <button className="btn btn-ac" onClick={create} disabled={saving}>{saving ? '...' : t.users.create}</button>
@@ -93,6 +97,7 @@ export default function UserManagement() {
             <div className="pt-meta">
               @{usr.username}
               {usr.role === 'entry' && usr.sites?.length ? ` \u00b7 ${usr.sites.join(', ')}` : ''}
+              {usr.canSeePii === false && <> &middot; <span style={{ color: 'var(--err)' }}>No PII access</span></>}
             </div>
           </div>
           {!usr.isDefault && (

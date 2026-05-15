@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { SAMPLE_CONDITIONS } from '../../constants/index.js';
+import { canSeeField } from '../../utils/pii.js';
 
 export default function ShipmentDetail({ shipment, onConfirmReception, onBack, onViewPatient }) {
   const { t, user, users } = useApp();
@@ -121,10 +122,10 @@ export default function ShipmentDetail({ shipment, onConfirmReception, onBack, o
                   onClick={() => onViewPatient?.({ id: sample.patientId, code: sample.patientCode, name: sample.patientName })}
                 >
                   <span className="code-pill">{sample.patientCode}</span>
-                  <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{sample.patientName}</span>
+                  {canSeeField(user?.canSeePii, 'name') && sample.patientName && <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{sample.patientName}</span>}
                 </div>
                 <div className="fc gap6">
-                  <span style={{ fontSize: '.78rem', color: 'var(--tx2)' }}>{sample.facility}</span>
+                  {sample.facility && <span style={{ fontSize: '.78rem', color: 'var(--tx2)' }}>{sample.facility}</span>}
                   <span className="badge b-ac">{sample.vialsShipped}/{sample.vialsTotal} {ts.vials}</span>
                 </div>
               </div>

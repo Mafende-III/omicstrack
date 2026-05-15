@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { api } from '../../storage/engine.js';
+import { canSeeField } from '../../utils/pii.js';
 
 export default function ShipmentPipeline({ onViewPatient }) {
-  const { patients, t } = useApp();
+  const { patients, t, user } = useApp();
   const [groups, setGroups] = useState({
     preCollection: [],
     processing: [],
@@ -83,10 +84,10 @@ export default function ShipmentPipeline({ onViewPatient }) {
                 >
                   <div className="fc gap6 mb6">
                     <span className="code-pill">{p.code}</span>
-                    <span style={{ fontWeight: 600, fontSize: '.78rem' }}>{p.name}</span>
+                    {canSeeField(user?.canSeePii, 'name') && <span style={{ fontWeight: 600, fontSize: '.78rem' }}>{p.name}</span>}
                   </div>
                   <div style={{ fontSize: '.68rem', color: 'var(--tx2)' }}>
-                    {p.facility} &middot; {p.leukemiaType}
+                    {p.facility && <>{p.facility} &middot; </>}{p.leukemiaType}
                   </div>
                 </div>
               ))

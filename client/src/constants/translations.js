@@ -23,6 +23,8 @@ export const T = {
       pSig: 'Patient Signature', rSig: 'Researcher Signature',
       clear: 'Clear', save: 'Save Sig.', saved: 'Captured',
       submit: 'Submit Consent', done: 'Consent submitted',
+      signingTitle: 'Signatures', date: 'Date', signHere: 'Sign here',
+      iAgree: 'I have read the form above and consent to participate',
     },
     q: {
       title: 'Patient Questionnaire',
@@ -83,6 +85,7 @@ export const T = {
       sites: 'Assigned Sites (entry role)', create: 'Create User', remove: 'Remove',
       none: 'No additional users yet.',
       passNote: 'Passwords are stored for this MVP \u2014 update before production use',
+      canSeePii: 'Can view patient personal data (name, age, facility)',
     },
     dash: {
       title: 'Dashboard', total: 'Total Patients', onTx: 'On Treatment',
@@ -131,6 +134,8 @@ export const T = {
       pSig: 'Signature patient', rSig: 'Signature chercheur',
       clear: 'Effacer', save: 'Sauvegarder', saved: 'Captur\u00e9',
       submit: 'Soumettre', done: 'Soumis',
+      signingTitle: 'Signatures', date: 'Date', signHere: 'Signez ici',
+      iAgree: 'J\u2019ai lu le formulaire ci-dessus et je consens \u00e0 participer',
     },
     q: {
       title: 'Questionnaire patient', fill: 'Remplir num\u00e9riquement', upload: 'T\u00e9l\u00e9charger formulaire',
@@ -177,6 +182,7 @@ export const T = {
       title: 'Gestion utilisateurs', add: 'Ajouter', name: 'Nom complet', user: 'Identifiant',
       pass: 'Mot de passe', role: 'R\u00f4le', sites: 'Sites assign\u00e9s', create: 'Cr\u00e9er', remove: 'Supprimer',
       none: 'Aucun utilisateur.', passNote: 'Mots de passe stock\u00e9s pour MVP',
+      canSeePii: 'Peut voir les donn\u00e9es personnelles des patients (nom, \u00e2ge, \u00e9tablissement)',
     },
     dash: {
       title: 'Tableau de bord', total: 'Total patients', onTx: 'En traitement',
@@ -223,6 +229,8 @@ export const T = {
       confirm: 'Nemeza ko umurwayi yashyizeho umukono',
       pSig: 'Umukono w\u2019umurwayi', rSig: 'Umukono w\u2019umushakashatsi',
       clear: 'Siba', save: 'Bika', saved: 'Byabitswe', submit: 'Rohereza', done: 'Byaroherejwe',
+      signingTitle: 'Imikono', date: 'Itariki', signHere: 'Andika umukono hano',
+      iAgree: 'Nasomye iyi mpapuro kandi nemeye kwitabira',
     },
     q: {
       title: 'Ibibazo by\u2019umurwayi', fill: 'Uzuza kuri mudasobwa', upload: 'Shyiraho impapuro',
@@ -270,6 +278,7 @@ export const T = {
       title: 'Gucunga abakoresha', add: 'Ongeraho', name: 'Amazina yuzuye', user: 'Izina ry\u2019ukoresha',
       pass: 'Ijambo banga', role: 'Uruhare', sites: 'Ibitaro byagenwe', create: 'Shiraho', remove: 'Siba',
       none: 'Nta bakoresha.', passNote: 'Amagambo banga abitswe kuri MVP',
+      canSeePii: 'Arashobora kubona amakuru bwite y\'umurwayi (izina, imyaka, ibitaro)',
     },
     dash: {
       title: 'Ikigenderwaho', total: 'Abarwayi bose', onTx: 'Bakivurwa',
