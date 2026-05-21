@@ -18,9 +18,14 @@ function envelope(body) {
       <div style="display:inline-block;padding:8px 14px;border-radius:999px;background:${TEAL_BG};color:${TEAL_DARK};font-weight:700;font-size:12px;letter-spacing:0.1em;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">OMICSTRACK</div>
     </div>
     ${body}
-    <div style="border-top:1px solid ${BD};margin-top:32px;padding-top:18px;text-align:center;font-size:11px;color:${TX3};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+    <div style="border-top:1px solid ${BD};margin-top:32px;padding-top:18px;text-align:center;font-size:11px;color:${TX3};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;line-height:1.6;">
       OmicsTrack &middot; Leukemia Omics Research<br/>
       National Reference Laboratory, Kigali &middot; Universit&eacute; de Li&egrave;ge, Belgium
+    </div>
+    <div style="margin-top:10px;text-align:center;font-size:10px;color:${TX3};font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:0.02em;">
+      Built by
+      <a href="https://www.streamlinexperts.rw" style="color:${TEAL_DARK};text-decoration:none;font-weight:600;">StreamlineXperts</a>
+      &middot; &copy; 2026
     </div>
   </div>
 </body>
@@ -98,6 +103,8 @@ export function buildWelcomeEmail({ recipientEmail, recipientName, role, setupUr
     `Esperance Umumararungu`,
     `Director, Molecular & Genomics Unit`,
     `National Reference Laboratory · Rwanda Biomedical Center`,
+    ``,
+    `Built by StreamlineXperts · https://www.streamlinexperts.rw · © 2026`,
   ].join('\n');
 
   return {

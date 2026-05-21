@@ -13,6 +13,38 @@
   margin: 0 auto;
 }
 
+/* App-wide footer */
+.app-footer {
+  border-top: 1px solid var(--bd);
+  background: var(--s1);
+  padding: 14px 20px;
+  margin-top: 32px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--tx3);
+  letter-spacing: 0.01em;
+}
+.app-footer a {
+  color: var(--ac);
+  text-decoration: none;
+  font-weight: 600;
+}
+.app-footer a:hover {
+  text-decoration: underline;
+}
+.app-footer .sep {
+  margin: 0 8px;
+  color: var(--tx3);
+  opacity: 0.6;
+}
+
+/* Footer should clear the mobile bottom nav so it doesn't sit behind it */
+@media (max-width: 640px) {
+  .app-footer {
+    margin-bottom: 60px; /* clears the fixed bottom nav */
+  }
+}
+
 /* Header */
 .hdr {
   background: var(--s1);

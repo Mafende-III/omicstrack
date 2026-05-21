@@ -121,7 +121,21 @@ function AppContent() {
           <FormsManagement />
         ) : null}
       </div>
+      <AppFooter />
     </div>
+  );
+}
+
+function AppFooter() {
+  return (
+    <footer className="app-footer">
+      &copy; 2026 OmicsTrack
+      <span className="sep">&middot;</span>
+      Built by{' '}
+      <a href="https://www.streamlinexperts.rw" target="_blank" rel="noopener noreferrer">
+        StreamlineXperts
+      </a>
+    </footer>
   );
 }
 
