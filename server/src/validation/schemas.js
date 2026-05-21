@@ -14,10 +14,18 @@ export const LoginSchema = z.object({
 export const CreateUserSchema = z.object({
   name: z.string().min(1).max(200),
   username: z.string().min(1).max(100),
-  password: z.string().min(4).max(200),
+  email: z.string().email().max(200).optional(),
   role: z.enum(ROLES),
   sites: z.array(z.enum(FACILITIES)).default([]),
   canSeePii: z.boolean().default(true),
+});
+
+export const UpdateUserSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  email: z.string().email().max(200).nullable().optional(),
+  role: z.enum(ROLES).optional(),
+  sites: z.array(z.enum(FACILITIES)).optional(),
+  canSeePii: z.boolean().optional(),
 });
 
 export const CreatePatientSchema = z.object({

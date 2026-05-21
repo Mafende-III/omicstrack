@@ -15,6 +15,11 @@ export const env = {
   PORT: parseInt(process.env.PORT, 10) || 3001,
   NODE_ENV: process.env.NODE_ENV || 'development',
   CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // Email — falls back to console logging when SENDGRID_API_KEY is unset (dev)
+  SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',
+  EMAIL_SENDER: process.env.EMAIL_SENDER || 'contact@streamlinexperts.rw',
+  EMAIL_SENDER_NAME: process.env.EMAIL_SENDER_NAME || 'Esperance Umumararungu',
+  APP_URL: process.env.APP_URL || 'http://localhost:5173',
 };
 
 const required = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];

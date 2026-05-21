@@ -7,6 +7,9 @@ export const UserRepo = {
   async add(user) {
     return api.post('/users', user);
   },
+  async update(userId, changes) {
+    return api.put(`/users/${userId}`, changes);
+  },
   async remove(userId) {
     return api.del(`/users/${userId}`);
   },

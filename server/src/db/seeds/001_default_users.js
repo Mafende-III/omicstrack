@@ -38,6 +38,7 @@ export async function seed(knex) {
       role: 'liege',
       sites: ALL_SITES,
       is_default: true,
+      can_see_pii: false,
       created_at: '2025-01-01T00:00:00Z',
     },
   ];

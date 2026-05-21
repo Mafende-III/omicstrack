@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, refresh, logout, me } from '../controllers/auth.controller.js';
+import { login, refresh, logout, me, getSetupToken, setupPassword } from '../controllers/auth.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { loginLimiter } from '../middleware/rateLimiter.js';
@@ -11,5 +11,9 @@ router.post('/login', loginLimiter, validate(LoginSchema), login);
 router.post('/refresh', refresh);
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, me);
+
+// Magic-link onboarding (unauthenticated — the token IS the auth)
+router.get('/setup-token/:token', getSetupToken);
+router.post('/setup-password', setupPassword);
 
 export default router;

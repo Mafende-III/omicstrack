@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import db from '../config/db.js';
 import { env } from '../config/env.js';
 import { logAudit } from '../services/audit.service.js';
+import { findValidToken, consumeToken } from '../services/tokens.service.js';
 
 function generateAccessToken(user) {
   return jwt.sign(
@@ -135,6 +136,106 @@ export async function logout(req, res) {
 
   res.clearCookie('refreshToken', { path: '/api/v1/auth' });
   res.json({ ok: true });
+}
+
+/**
+ * Unauthenticated endpoint: validate a setup token from the welcome email link.
+ * Returns minimal user info if the token is valid, so the UI can show "Hi {name}, set your password".
+ */
+export async function getSetupToken(req, res) {
+  const { token } = req.params;
+  const row = await findValidToken(token);
+  if (!row) {
+    return res.status(410).json({ error: 'Link is invalid, expired, or already used' });
+  }
+
+  res.json({
+    userName: row.user_name,
+    username: row.username,
+    role: row.role,
+    purpose: row.purpose,
+    expiresAt: row.expires_at,
+  });
+}
+
+/**
+ * Unauthenticated endpoint: consume a setup token and set the user's password.
+ * Logs the user in automatically on success (same as the regular login flow).
+ */
+export async function setupPassword(req, res) {
+  const { token, password } = req.body || {};
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Token required' });
+  }
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+
+  const row = await findValidToken(token);
+  if (!row) {
+    return res.status(410).json({ error: 'Link is invalid, expired, or already used' });
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+
+  await db.transaction(async (trx) => {
+    await trx('users').where('id', row.user_id).update({
+      password_hash: passwordHash,
+      email_verified: true,
+    });
+    await trx('user_setup_tokens')
+      .where('id', row.token_id)
+      .whereNull('consumed_at')
+      .update({ consumed_at: new Date() });
+  });
+
+  // Fetch the now-updated user record for session creation
+  const user = await db('users').where('id', row.user_id).first();
+
+  // Issue session — mirrors the login flow
+  const accessToken = generateAccessToken(user);
+  const refreshToken = crypto.randomBytes(48).toString('hex');
+  const refreshHash = await bcrypt.hash(refreshToken, 10);
+  const expiresAt = new Date(Date.now() + parseExpiry(env.JWT_REFRESH_EXPIRY));
+
+  await db('sessions').insert({
+    user_id: user.id,
+    refresh_token_hash: refreshHash,
+    expires_at: expiresAt,
+    ip_address: req.ip,
+    user_agent: req.headers['user-agent'] || null,
+  });
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
+    maxAge: parseExpiry(env.JWT_REFRESH_EXPIRY),
+    path: '/api/v1/auth',
+  });
+
+  await logAudit({
+    userId: user.id,
+    userName: user.name,
+    action: 'user.password_set',
+    entityType: 'user',
+    entityId: user.id,
+    details: `${user.name} completed initial password setup`,
+    ipAddress: req.ip,
+  });
+
+  res.json({
+    accessToken,
+    user: {
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      role: user.role,
+      sites: user.sites,
+      isDefault: user.is_default,
+      canSeePii: user.can_see_pii !== false,
+    },
+  });
 }
 
 export async function me(req, res) {

@@ -115,9 +115,17 @@ export function AppProvider({ children }) {
   }, []);
 
   const addUser = useCallback(async (newUser) => {
-    await UserRepo.add(newUser);
+    const created = await UserRepo.add(newUser);
     const u = await UserRepo.getAll();
     setUsers(u);
+    return created;
+  }, []);
+
+  const updateUser = useCallback(async (userId, changes) => {
+    const updated = await UserRepo.update(userId, changes);
+    const u = await UserRepo.getAll();
+    setUsers(u);
+    return updated;
   }, []);
 
   const removeUser = useCallback(async (userId) => {
@@ -136,7 +144,7 @@ export function AppProvider({ children }) {
   const value = {
     lang, setLang, t,
     user, login, logout,
-    users, addUser, removeUser,
+    users, addUser, updateUser, removeUser,
     patients, addPatient, updatePatient, refreshPatients,
     consentTemplate, questionnaireTemplate, refreshTemplates,
     logAudit,

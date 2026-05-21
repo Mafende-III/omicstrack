@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AppProvider, useApp } from './context/AppContext.jsx';
 import LoginPage from './components/auth/LoginPage.jsx';
+import SetPasswordPage from './components/auth/SetPasswordPage.jsx';
 import Header from './components/layout/Header.jsx';
 import Navigation from './components/layout/Navigation.jsx';
 import Dashboard from './components/dashboard/Dashboard.jsx';
@@ -18,10 +19,30 @@ const VIEW_ACCESS = {
   forms: ['admin'],
 };
 
+function getSetupTokenFromUrl() {
+  try {
+    const url = new URL(window.location.href);
+    if (url.pathname === '/set-password' || url.searchParams.has('token')) {
+      const token = url.searchParams.get('token');
+      if (token && token.length >= 20) return token;
+    }
+  } catch {
+    // ignore malformed URL
+  }
+  return null;
+}
+
 function AppContent() {
   const { user, t, ready } = useApp();
   const [view, setView] = useState('dashboard');
   const [selected, setSelected] = useState(null);
+  const [setupToken, setSetupToken] = useState(getSetupTokenFromUrl);
+
+  useEffect(() => {
+    // If the URL had a setup token but we've already got a logged-in user,
+    // clear the token state so the regular app renders.
+    if (user && setupToken) setSetupToken(null);
+  }, [user, setupToken]);
 
   const guardedSetView = useCallback((v) => {
     const role = user?.role;
@@ -43,6 +64,21 @@ function AppContent() {
       }}>
         {t.misc.loading}
       </div>
+    );
+  }
+
+  // Setup link from welcome email takes priority over login page
+  if (setupToken && !user) {
+    return (
+      <SetPasswordPage
+        token={setupToken}
+        onComplete={async () => {
+          // After successful password set + auto-login, refresh app state
+          setSetupToken(null);
+          // Force a reload to fully bootstrap the AppContext (user, patients, templates)
+          window.location.href = '/';
+        }}
+      />
     );
   }
 
