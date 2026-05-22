@@ -1,16 +1,21 @@
 import { useRef, useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
+import { hasCapability, CAPABILITIES } from '../../constants/capabilities.js';
 
 export default function Navigation({ view, setView }) {
   const { t, user } = useApp();
-  const role = user?.role;
+
+  const canPatients = hasCapability(user, CAPABILITIES.VIEW_PATIENTS);
+  const canShipments = hasCapability(user, CAPABILITIES.CREATE_SHIPMENT) || hasCapability(user, CAPABILITIES.RECEIVE_SHIPMENT);
+  const canForms = hasCapability(user, CAPABILITIES.EDIT_FORMS);
+  const canUsers = hasCapability(user, CAPABILITIES.MANAGE_USERS);
 
   const items = [
     { k: 'dashboard', l: t.nav.dash, icon: '\u25A6' },
-    { k: 'patients', l: t.nav.patients, icon: '\u2630' },
-    ...(['admin', 'entry', 'liege'].includes(role) ? [{ k: 'shipments', l: t.nav.shipments, icon: '\u2708' }] : []),
-    ...(role === 'admin' ? [{ k: 'forms', l: t.nav.forms, icon: '\u270e' }] : []),
-    ...(role === 'admin' ? [{ k: 'users', l: t.nav.users, icon: '\u2605' }] : []),
+    ...(canPatients ? [{ k: 'patients', l: t.nav.patients, icon: '\u2630' }] : []),
+    ...(canShipments ? [{ k: 'shipments', l: t.nav.shipments, icon: '\u2708' }] : []),
+    ...(canForms ? [{ k: 'forms', l: t.nav.forms, icon: '\u270e' }] : []),
+    ...(canUsers ? [{ k: 'users', l: t.nav.users, icon: '\u2605' }] : []),
   ];
 
   // Sliding indicator

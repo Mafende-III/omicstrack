@@ -10,13 +10,16 @@ import PatientDetail from './components/patients/PatientDetail.jsx';
 import ShipmentHub from './components/shipments/ShipmentHub.jsx';
 import UserManagement from './components/users/UserManagement.jsx';
 import FormsManagement from './components/admin/FormsManagement.jsx';
+import { hasCapability, CAPABILITIES } from './constants/capabilities.js';
 
-const VIEW_ACCESS = {
-  dashboard: ['admin', 'entry', 'viewer', 'liege'],
-  patients: ['admin', 'entry', 'viewer', 'liege'],
-  shipments: ['admin', 'entry', 'liege'],
-  users: ['admin'],
-  forms: ['admin'],
+// Each view requires at least ONE of these capabilities. Dashboard is always
+// available to any authenticated user; everything else is capability-gated.
+const VIEW_CAPS = {
+  dashboard: null, // always accessible
+  patients: [CAPABILITIES.VIEW_PATIENTS],
+  shipments: [CAPABILITIES.CREATE_SHIPMENT, CAPABILITIES.RECEIVE_SHIPMENT],
+  users: [CAPABILITIES.MANAGE_USERS],
+  forms: [CAPABILITIES.EDIT_FORMS],
 };
 
 function getSetupTokenFromUrl() {
@@ -45,16 +48,15 @@ function AppContent() {
   }, [user, setupToken]);
 
   const guardedSetView = useCallback((v) => {
-    const role = user?.role;
-    const allowed = VIEW_ACCESS[v];
-    if (allowed && !allowed.includes(role)) {
+    const required = VIEW_CAPS[v];
+    if (required && !required.some((cap) => hasCapability(user, cap))) {
       setView('dashboard');
       setSelected(null);
       return;
     }
     setView(v);
     setSelected(null);
-  }, [user?.role]);
+  }, [user]);
 
   if (!ready) {
     return (
@@ -84,16 +86,15 @@ function AppContent() {
 
   if (!user) return <LoginPage />;
 
-  const role = user.role;
-
   const handleViewPatient = (patient) => {
     setSelected(patient);
     setView('patients');
   };
 
-  // Enforce access: if current view is not allowed for role, redirect to dashboard
-  const allowed = VIEW_ACCESS[view];
-  const safeView = (allowed && !allowed.includes(role)) ? 'dashboard' : view;
+  // Enforce access: if current view requires a capability the user lacks, redirect to dashboard
+  const required = VIEW_CAPS[view];
+  const allowedByCap = !required || required.some((cap) => hasCapability(user, cap));
+  const safeView = allowedByCap ? view : 'dashboard';
   const activeView = selected ? 'patients' : safeView;
 
   return (

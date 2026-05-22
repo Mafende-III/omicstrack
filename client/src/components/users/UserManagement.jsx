@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { SITES } from '../../constants/index.js';
+import { CAPABILITY_GROUPS, capabilitiesForRole } from '../../constants/capabilities.js';
 
 export default function UserManagement() {
   const { users, addUser, updateUser, removeUser, t } = useApp();
@@ -160,13 +161,18 @@ export default function UserManagement() {
 }
 
 function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
+  const initialCaps = Array.isArray(user.capabilities) && user.capabilities.length > 0
+    ? user.capabilities
+    : capabilitiesForRole(user.role);
   const [f, setF] = useState({
     name: user.name,
     email: user.email || '',
     role: user.role,
     sites: user.sites || [],
     canSeePii: user.canSeePii !== false,
+    capabilities: initialCaps,
   });
+  const [capsCustomized, setCapsCustomized] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const u = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -174,6 +180,30 @@ function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
     ...p,
     sites: p.sites.includes(s) ? p.sites.filter((x) => x !== s) : [...p.sites, s],
   }));
+
+  const toggleCap = (capId) => {
+    setCapsCustomized(true);
+    setF((p) => ({
+      ...p,
+      capabilities: p.capabilities.includes(capId)
+        ? p.capabilities.filter((x) => x !== capId)
+        : [...p.capabilities, capId],
+    }));
+  };
+
+  // When role changes, if admin hasn't manually tweaked capabilities yet,
+  // re-seed from the new role's preset.
+  useEffect(() => {
+    if (!capsCustomized) {
+      setF((p) => ({ ...p, capabilities: capabilitiesForRole(p.role) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.role]);
+
+  const resetToRoleDefaults = () => {
+    setF((p) => ({ ...p, capabilities: capabilitiesForRole(p.role) }));
+    setCapsCustomized(false);
+  };
 
   const save = async () => {
     if (!f.name) return;
@@ -185,6 +215,7 @@ function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
       role: f.role,
       sites: f.sites,
       canSeePii: f.canSeePii,
+      capabilities: f.capabilities,
     });
     setSaving(false);
   };
@@ -219,6 +250,42 @@ function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
         <input type="checkbox" checked={f.canSeePii} onChange={(e) => u('canSeePii', e.target.checked)} />
         <span className="cbox-lbl">Can view patient personal data (name, age, facility)</span>
       </label>
+
+      <div className="card-inner mt16">
+        <div className="fb mb12">
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.95rem', color: 'var(--tx)' }}>
+              Capabilities
+            </div>
+            <div style={{ fontSize: '.78rem', color: 'var(--tx3)', marginTop: 2 }}>
+              {capsCustomized ? 'Custom set — different from role defaults' : `Defaults for ${t.roles[f.role]} role`}
+            </div>
+          </div>
+          {capsCustomized && (
+            <button type="button" className="btn btn-bd btn-xs" onClick={resetToRoleDefaults}>
+              Reset to role defaults
+            </button>
+          )}
+        </div>
+        {CAPABILITY_GROUPS.map((group) => (
+          <div key={group.label} style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: '.75rem', fontWeight: 700, color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
+              {group.label}
+            </div>
+            {group.items.map((cap) => (
+              <label key={cap.id} className="cbox" style={{ marginBottom: 4 }}>
+                <input
+                  type="checkbox"
+                  checked={f.capabilities.includes(cap.id)}
+                  onChange={() => toggleCap(cap.id)}
+                />
+                <span className="cbox-lbl" style={{ fontSize: '.85rem' }}>{cap.label}</span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+
       <div className="fc gap8 mt12" style={{ justifyContent: 'flex-end' }}>
         <button className="btn btn-bd" onClick={onCancel} disabled={saving}>{t.pt.cancel}</button>
         <button className="btn btn-ac" onClick={save} disabled={saving}>{saving ? '...' : 'Save changes'}</button>

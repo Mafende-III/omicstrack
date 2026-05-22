@@ -26,6 +26,7 @@ export const UpdateUserSchema = z.object({
   role: z.enum(ROLES).optional(),
   sites: z.array(z.enum(FACILITIES)).optional(),
   canSeePii: z.boolean().optional(),
+  capabilities: z.array(z.string()).optional(),
 });
 
 export const CreatePatientSchema = z.object({

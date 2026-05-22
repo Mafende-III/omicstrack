@@ -6,10 +6,11 @@ import { logAudit } from '../services/audit.service.js';
 import { createSetupToken, TOKEN_TTL_HOURS } from '../services/tokens.service.js';
 import { sendMail } from '../services/email.service.js';
 import { buildWelcomeEmail } from '../services/emailTemplates/welcomeEmail.js';
+import { capabilitiesForRole, CAPABILITIES } from '../constants/capabilities.js';
 
 export async function getUsers(req, res) {
   const users = await db('users')
-    .select('id', 'name', 'username', 'email', 'role', 'sites', 'can_see_pii', 'is_default', 'created_at', 'created_by', 'welcome_email_sent_at')
+    .select('id', 'name', 'username', 'email', 'role', 'sites', 'can_see_pii', 'capabilities', 'is_default', 'created_at', 'created_by', 'welcome_email_sent_at')
     .orderBy('created_at', 'asc');
 
   res.json(users.map(formatUser));
@@ -36,6 +37,9 @@ export async function createUser(req, res) {
   const placeholderPassword = crypto.randomBytes(32).toString('base64url');
   const passwordHash = await bcrypt.hash(placeholderPassword, 12);
 
+  // Seed capabilities from the role preset. Admin can tweak per-user later via PUT.
+  const initialCapabilities = capabilitiesForRole(role);
+
   const [user] = await db('users')
     .insert({
       name,
@@ -45,6 +49,7 @@ export async function createUser(req, res) {
       role,
       sites: sites || [],
       can_see_pii: canSeePii !== false,
+      capabilities: initialCapabilities,
       is_default: false,
       created_by: req.user.id,
     })
@@ -102,7 +107,7 @@ export async function createUser(req, res) {
 
 export async function updateUser(req, res) {
   const { id } = req.params;
-  const { name, email, role, sites, canSeePii } = req.validated;
+  const { name, email, role, sites, canSeePii, capabilities } = req.validated;
 
   const user = await db('users').where('id', id).first();
   if (!user) {
@@ -125,9 +130,22 @@ export async function updateUser(req, res) {
   const updates = {};
   if (name !== undefined) updates.name = name;
   if (email !== undefined) updates.email = email ? email.trim() : null;
-  if (role !== undefined) updates.role = role;
+  if (role !== undefined) {
+    updates.role = role;
+    // If role changed and admin didn't also send an explicit capabilities array,
+    // re-seed capabilities from the new role's preset.
+    if (role !== user.role && capabilities === undefined) {
+      updates.capabilities = capabilitiesForRole(role);
+    }
+  }
   if (sites !== undefined) updates.sites = sites;
   if (canSeePii !== undefined) updates.can_see_pii = canSeePii;
+  if (capabilities !== undefined) {
+    // Validate every capability is known
+    const known = new Set(Object.values(CAPABILITIES));
+    const filtered = capabilities.filter((c) => known.has(c));
+    updates.capabilities = filtered;
+  }
 
   if (Object.keys(updates).length === 0) {
     return res.status(400).json({ error: 'No fields to update' });
@@ -189,6 +207,7 @@ function formatUser(u) {
     role: u.role,
     sites: u.sites,
     canSeePii: u.can_see_pii !== false,
+    capabilities: u.capabilities || [],
     isDefault: u.is_default,
     createdAt: u.created_at,
     createdBy: u.created_by,

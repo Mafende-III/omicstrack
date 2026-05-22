@@ -214,9 +214,19 @@ async function generateStepPdf(step, patientId, patient, actor, lang = 'en') {
     const content = await loadQuestionnaireTemplateContent(row.template_version_id);
     const sectionDefs = buildQuestionnaireSectionDefs(content, lang);
 
+    // Also load the consent template for its localized title + study title so
+    // the questionnaire's header matches the consent visually.
+    const consentContent = await loadConsentTemplateContent(null);
+    const consentTpl = consentContent?.[lang] || consentContent?.en || CONSENT_TEMPLATE.en;
+
     const pdfBuffer = await generateQuestionnairePdf({
+      title: 'Patient Questionnaire',
+      studyTitle: consentTpl.studyTitle,
       patientCode: patient.code,
       patientName: patient.name,
+      patientFacility: patient.facility,
+      patientAge: patient.age,
+      patientLeukemiaType: patient.leukemia_type,
       sectionDefs,
       answers: fields,
       submittedAt: row.submitted_at ? new Date(row.submitted_at).toISOString().split('T')[0] : '',
@@ -253,24 +263,31 @@ async function loadQuestionnaireTemplateContent(templateVersionId) {
 }
 
 // Converts DB questionnaire content into the shape generateQuestionnairePdf expects:
-// { A: [{ id, label }], B: [...], ... }
+// [{ key, label, fields: [{ id, label }] }, ...]
 function buildQuestionnaireSectionDefs(content, lang = 'en') {
+  const fallbackLabels = {
+    A: 'A — Identity',
+    B: 'B — Socio-economic',
+    C: 'C — Health',
+    D: 'D — Clinical / Diagnosis',
+    E: 'E — Treatment History',
+    F: 'F — Environmental',
+  };
   if (!content?.sections) {
-    // Fallback to static QF (English labels)
-    const out = {};
-    for (const [k, defs] of Object.entries(QF)) {
-      out[k] = defs.map((d) => ({ id: d.id, label: d.en }));
-    }
-    return out;
-  }
-  const out = {};
-  for (const section of content.sections) {
-    out[section.key] = section.fields.map((f) => ({
-      id: f.id,
-      label: f.labels?.[lang] || f.labels?.en || f.id,
+    return Object.entries(QF).map(([k, defs]) => ({
+      key: k,
+      label: fallbackLabels[k] || k,
+      fields: defs.map((d) => ({ id: d.id, label: d.en })),
     }));
   }
-  return out;
+  return content.sections.map((section) => ({
+    key: section.key,
+    label: section.labels?.[lang] || section.labels?.en || fallbackLabels[section.key] || section.key,
+    fields: section.fields.map((f) => ({
+      id: f.id,
+      label: f.labels?.[lang] || f.labels?.en || f.id,
+    })),
+  }));
 }
 
 // Build column updates from request data for each step type

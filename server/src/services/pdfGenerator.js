@@ -192,16 +192,22 @@ export async function generateConsentPdf(opts) {
 }
 
 /**
- * Generate a questionnaire PDF with all answered fields.
+ * Generate a questionnaire PDF with all answered fields. Matches the visual
+ * language of the consent PDF: centered title block, sections with bold
+ * headings + body content + divider rule, per-page footer.
  *
  * @param {Object} opts
  * @param {string} opts.patientCode
  * @param {string} opts.patientName
- * @param {Object} opts.sectionDefs - { A: [{id, label}], B: [...], ... }
- * @param {Object} opts.answers - { q_age: '48', q_married: 'Yes', ... }
+ * @param {string} opts.patientFacility - optional
+ * @param {string} opts.patientAge - optional
+ * @param {string} opts.patientLeukemiaType - optional
+ * @param {Array}  opts.sectionDefs - [{ key, label, fields: [{ id, label }] }, ...]
+ * @param {Object} opts.answers
  * @param {string} opts.submittedAt
- * @param {string} opts.submittedBy - user name
- * @param {string} opts.lang - 'en', 'fr', or 'ki'
+ * @param {string} opts.submittedBy
+ * @param {string} opts.title - localized title (default "Patient Questionnaire")
+ * @param {string} opts.studyTitle - subtitle line
  * @returns {Promise<Buffer>}
  */
 export async function generateQuestionnairePdf(opts) {
@@ -223,80 +229,89 @@ export async function generateQuestionnairePdf(opts) {
     doc
       .fontSize(FONT_SIZE_TITLE)
       .font('Helvetica-Bold')
-      .text('Patient Questionnaire', { align: 'center' });
+      .text(opts.title || 'Patient Questionnaire', { align: 'center' });
+
+    doc.moveDown(0.5);
+
+    doc
+      .fontSize(FONT_SIZE_HEADING)
+      .font('Helvetica-Bold')
+      .text(
+        opts.studyTitle || 'Characterization of Omics Perturbations Driving Leukemia in the Rwandan Population',
+        { align: 'center' },
+      );
+
+    doc.moveDown(1);
+
+    // Patient identification section (mirrors consent's section pattern)
+    doc
+      .fontSize(FONT_SIZE_HEADING)
+      .font('Helvetica-Bold')
+      .text('Patient Identification');
 
     doc.moveDown(0.3);
 
-    doc
-      .fontSize(FONT_SIZE_BODY)
-      .font('Helvetica')
-      .text('Characterization of Omics Perturbations Driving Leukemia in the Rwandan Population', { align: 'center' });
+    const patientFields = [
+      ['Patient Code', opts.patientCode],
+      ['Patient Name', opts.patientName],
+      ['Age', opts.patientAge],
+      ['Facility', opts.patientFacility],
+      ['Leukemia Type', opts.patientLeukemiaType],
+      ['Submitted', opts.submittedAt ? `${opts.submittedAt}${opts.submittedBy ? ` · by ${opts.submittedBy}` : ''}` : null],
+    ];
 
-    doc.moveDown(1);
-
-    // Patient info box
-    doc
-      .fontSize(FONT_SIZE_BODY)
-      .font('Helvetica-Bold')
-      .text(`Patient Code: `, { continued: true })
-      .font('Helvetica')
-      .text(opts.patientCode);
-
-    if (opts.patientName) {
+    for (const [label, value] of patientFields) {
+      if (!value) continue;
       doc
+        .fontSize(FONT_SIZE_BODY)
         .font('Helvetica-Bold')
-        .text(`Patient Name: `, { continued: true })
+        .text(`${label}: `, { continued: true })
         .font('Helvetica')
-        .text(opts.patientName);
+        .text(String(value));
     }
 
-    doc
-      .font('Helvetica-Bold')
-      .text(`Submitted: `, { continued: true })
-      .font('Helvetica')
-      .text(`${opts.submittedAt || ''} by ${opts.submittedBy || ''}`);
-
-    doc.moveDown(1);
-
-    // Divider
+    doc.moveDown(0.8);
     drawDivider(doc, pageWidth);
+    doc.moveDown(0.5);
 
-    // Sections
-    const sectionLabels = {
-      A: 'A. Identity',
-      B: 'B. Socio-economic',
-      C: 'C. Health History',
-      D: 'D. Clinical / Diagnosis',
-      E: 'E. Treatment History',
-      F: 'F. Environmental',
-    };
+    // Sections — same shape as consent body sections
+    const sections = Array.isArray(opts.sectionDefs)
+      ? opts.sectionDefs
+      : Object.entries(opts.sectionDefs || {}).map(([k, fields]) => ({ key: k, label: `Section ${k}`, fields }));
 
-    for (const [sectionKey, fields] of Object.entries(opts.sectionDefs)) {
+    for (const section of sections) {
+      const answeredFields = section.fields.filter((f) => {
+        const v = opts.answers[f.id];
+        return v !== undefined && v !== null && v !== '';
+      });
+
+      // Skip sections that have no answered fields entirely
+      if (answeredFields.length === 0) continue;
+
       checkPageBreak(doc, 60);
 
       doc
         .fontSize(FONT_SIZE_HEADING)
         .font('Helvetica-Bold')
-        .text(sectionLabels[sectionKey] || `Section ${sectionKey}`);
+        .text(section.label);
 
       doc.moveDown(0.4);
 
-      for (const field of fields) {
-        const answer = opts.answers[field.id];
-        if (answer === undefined || answer === null || answer === '') continue;
-
+      for (const field of answeredFields) {
         checkPageBreak(doc, 30);
 
+        const answer = opts.answers[field.id];
         doc
           .fontSize(FONT_SIZE_BODY)
           .font('Helvetica-Bold')
           .text(`${field.label}: `, { continued: true })
           .font('Helvetica')
-          .text(String(answer));
+          .text(String(answer), { lineGap: LINE_GAP });
       }
 
-      doc.moveDown(0.6);
+      doc.moveDown(0.8);
       drawDivider(doc, pageWidth);
+      doc.moveDown(0.5);
     }
 
     drawFooter(doc, opts.patientCode, pageWidth);

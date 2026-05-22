@@ -8,7 +8,15 @@ import { findValidToken, consumeToken } from '../services/tokens.service.js';
 
 function generateAccessToken(user) {
   return jwt.sign(
-    { sub: user.id, role: user.role, sites: user.sites, canSeePii: user.can_see_pii !== false },
+    {
+      sub: user.id,
+      role: user.role,
+      sites: user.sites,
+      canSeePii: user.can_see_pii !== false,
+      capabilities: Array.isArray(user.capabilities) && user.capabilities.length > 0
+        ? user.capabilities
+        : undefined, // omit if empty so middleware's fallback to role preset kicks in
+    },
     env.JWT_SECRET,
     { expiresIn: env.JWT_ACCESS_EXPIRY }
   );
@@ -83,6 +91,7 @@ export async function login(req, res) {
       sites: user.sites,
       isDefault: user.is_default,
       canSeePii: user.can_see_pii !== false,
+      capabilities: user.capabilities || [],
     },
   });
 }
@@ -234,6 +243,7 @@ export async function setupPassword(req, res) {
       sites: user.sites,
       isDefault: user.is_default,
       canSeePii: user.can_see_pii !== false,
+      capabilities: user.capabilities || [],
     },
   });
 }
@@ -252,5 +262,6 @@ export async function me(req, res) {
     sites: user.sites,
     isDefault: user.is_default,
     canSeePii: user.can_see_pii !== false,
+    capabilities: user.capabilities || [],
   });
 }

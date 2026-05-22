@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { authorize } from '../middleware/rbac.js';
+import { requireCapability } from '../middleware/rbac.js';
 import {
   getActive,
   listVersions,
@@ -13,9 +13,9 @@ const router = Router();
 // Read active template (any authenticated user — used by workflow steps)
 router.get('/:kind/active', authenticate, getActive);
 
-// Admin-only management
-router.get('/:kind/versions', authenticate, authorize('admin'), listVersions);
-router.get('/:kind/:id', authenticate, authorize('admin'), getVersion);
-router.post('/:kind', authenticate, authorize('admin'), createVersion);
+// Editor-only management
+router.get('/:kind/versions', authenticate, requireCapability('edit_forms'), listVersions);
+router.get('/:kind/:id', authenticate, requireCapability('edit_forms'), getVersion);
+router.post('/:kind', authenticate, requireCapability('edit_forms'), createVersion);
 
 export default router;
