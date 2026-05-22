@@ -6,6 +6,7 @@ export const CAPABILITIES = {
   VIEW_PATIENTS: 'view_patients',
   ADD_PATIENT: 'add_patient',
   EDIT_PATIENT: 'edit_patient',
+  DELETE_PATIENT: 'delete_patient',
   VIEW_PII: 'view_pii',
   SUBMIT_CONSENT: 'submit_consent',
   SUBMIT_QUESTIONNAIRE: 'submit_questionnaire',
@@ -25,6 +26,7 @@ export const CAPABILITY_GROUPS = [
       { id: CAPABILITIES.VIEW_PATIENTS, label: 'View patient list' },
       { id: CAPABILITIES.ADD_PATIENT, label: 'Add new patients' },
       { id: CAPABILITIES.EDIT_PATIENT, label: 'Edit patient profile' },
+      { id: CAPABILITIES.DELETE_PATIENT, label: 'Delete patient records (destructive)' },
       { id: CAPABILITIES.VIEW_PII, label: 'View patient personal data (name, age, facility)' },
     ],
   },
@@ -56,7 +58,7 @@ export const CAPABILITY_GROUPS = [
 
 export const ROLE_PRESETS = {
   admin: [
-    'view_patients', 'add_patient', 'edit_patient', 'view_pii',
+    'view_patients', 'add_patient', 'edit_patient', 'delete_patient', 'view_pii',
     'submit_consent', 'submit_questionnaire', 'submit_collection', 'submit_pbmc',
     'create_shipment', 'receive_shipment',
     'manage_users', 'edit_forms', 'view_audit',

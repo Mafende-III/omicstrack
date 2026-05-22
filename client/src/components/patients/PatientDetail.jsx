@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext.jsx';
 import { api } from '../../storage/engine.js';
 import { STEP_KEYS, SITES, LK_TYPES } from '../../constants/index.js';
 import { canSeeField } from '../../utils/pii.js';
+import { hasCapability, CAPABILITIES } from '../../constants/capabilities.js';
 import ConsentStep from '../workflow/ConsentStep.jsx';
 import QuestionnaireStep from '../workflow/QuestionnaireStep.jsx';
 import CollectionStep from '../workflow/CollectionStep.jsx';
@@ -37,15 +38,29 @@ function StepBar({ current, completedSteps, t, onNav }) {
 }
 
 export default function PatientDetail({ patient, onBack }) {
-  const { user, t, lang, updatePatient } = useApp();
+  const { user, t, lang, updatePatient, removePatient } = useApp();
   const role = user?.role;
   const defaultStep = role === 'liege' ? 'transfer' : 'consent';
   const [step, setStep] = useState(defaultStep);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ ...patient });
   const [completed, setCompleted] = useState([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const readOnly = role === 'viewer' || role === 'liege';
+  const canDelete = hasCapability(user, CAPABILITIES.DELETE_PATIENT);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await removePatient(patient.id);
+      onBack?.();
+    } catch (err) {
+      setDeleting(false);
+      alert(err.message || 'Failed to delete patient');
+    }
+  };
 
   const checkCompleted = useCallback(async () => {
     try {
@@ -109,11 +124,53 @@ export default function PatientDetail({ patient, onBack }) {
                 </span>
               </div>
             </div>
-            {!readOnly && (
-              <button className="btn btn-bd btn-sm" onClick={() => setEditing(true)}>
-                {t.pt.edit}
+            <div className="fc gap6">
+              {!readOnly && (
+                <button className="btn btn-bd btn-sm" onClick={() => setEditing(true)}>
+                  {t.pt.edit}
+                </button>
+              )}
+              {canDelete && (
+                <button className="btn btn-err btn-sm" onClick={() => setConfirmDelete(true)}>
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1000, padding: 20,
+          }}
+          onClick={() => !deleting && setConfirmDelete(false)}
+        >
+          <div className="card" style={{ maxWidth: 460, width: '100%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="ct" style={{ color: 'var(--err)' }}>Delete patient — this cannot be undone</div>
+            <p style={{ fontSize: '.9rem', color: 'var(--tx)', lineHeight: 1.6, margin: '8px 0 12px' }}>
+              You are about to permanently delete <strong>{patient.code} · {patient.name || '(name hidden)'}</strong>.
+            </p>
+            <p style={{ fontSize: '.85rem', color: 'var(--tx2)', lineHeight: 1.6, marginBottom: 16 }}>
+              This will also delete all linked records: consent, questionnaire, collection, PBMC,
+              and shipment entries for this patient. The action is logged in the audit trail but
+              the data itself cannot be recovered from the application.
+            </p>
+            <p style={{ fontSize: '.8rem', color: 'var(--tx3)', marginBottom: 16 }}>
+              For IRB-bound research data, consider whether deletion is truly necessary versus
+              flagging the record as withdrawn.
+            </p>
+            <div className="fc gap8" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn btn-bd" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                Cancel
               </button>
-            )}
+              <button className="btn btn-err" onClick={handleDelete} disabled={deleting}>
+                {deleting ? 'Deleting…' : `Delete ${patient.code}`}
+              </button>
+            </div>
           </div>
         </div>
       )}

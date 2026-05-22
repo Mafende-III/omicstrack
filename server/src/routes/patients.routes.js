@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getPatients, getPatient, createPatient, updatePatient, getDashboardStats } from '../controllers/patients.controller.js';
+import { getPatients, getPatient, createPatient, updatePatient, deletePatient, getDashboardStats } from '../controllers/patients.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { applySiteFilter, requireCapability } from '../middleware/rbac.js';
 import { validate } from '../middleware/validate.js';
@@ -12,5 +12,6 @@ router.get('/dashboard/stats', authenticate, applySiteFilter, getDashboardStats)
 router.get('/:id', authenticate, requireCapability('view_patients'), getPatient);
 router.post('/', authenticate, requireCapability('add_patient'), validate(CreatePatientSchema), createPatient);
 router.put('/:id', authenticate, requireCapability('edit_patient'), validate(UpdatePatientSchema), updatePatient);
+router.delete('/:id', authenticate, requireCapability('delete_patient'), deletePatient);
 
 export default router;

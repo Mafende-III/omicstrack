@@ -136,6 +136,43 @@ export async function updatePatient(req, res) {
   res.json(stripPii(formatPatient(updated), req.user.canSeePii));
 }
 
+export async function deletePatient(req, res) {
+  const { id } = req.params;
+
+  const patient = await db('patients').where('id', id).first();
+  if (!patient) {
+    return res.status(404).json({ error: 'Patient not found' });
+  }
+
+  // Optional safety: entry users with site restrictions can only delete
+  // patients at their assigned sites. (Will only matter if delete_patient
+  // is ever granted to an entry user.)
+  if (req.user.role === 'entry' && req.user.sites.length > 0 && !req.user.sites.includes(patient.facility)) {
+    return res.status(403).json({ error: 'Cannot delete patients outside your assigned sites' });
+  }
+
+  const actor = await db('users').where('id', req.user.id).first();
+
+  // Log audit BEFORE delete so the entry survives even if the FK cascade
+  // wipes any audit_log rows that referenced this patient (it shouldn't —
+  // audit_log doesn't FK to patients — but log first as a habit).
+  await logAudit({
+    userId: req.user.id,
+    userName: actor?.name,
+    action: 'patient.delete',
+    entityType: 'patient',
+    entityId: id,
+    details: `Patient ${patient.code} - ${patient.name} deleted (cascade: consent/questionnaire/collection/pbmc/transfer steps + shipment samples)`,
+    ipAddress: req.ip,
+  });
+
+  // FK cascades handle consent_steps, questionnaire_steps, collection_steps,
+  // pbmc_steps, transfer_steps, shipment_samples.
+  await db('patients').where('id', id).del();
+
+  res.json({ ok: true, deleted: { id, code: patient.code, name: patient.name } });
+}
+
 export async function getDashboardStats(req, res) {
   let patientsQuery = db('patients');
   if (req.siteFilter) {

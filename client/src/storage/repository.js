@@ -28,6 +28,9 @@ export const PatientRepo = {
   async update(patient) {
     return api.put(`/patients/${patient.id}`, patient);
   },
+  async remove(id) {
+    return api.del(`/patients/${id}`);
+  },
 };
 
 export const StepRepo = {

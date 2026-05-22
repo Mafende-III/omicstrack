@@ -114,6 +114,12 @@ export function AppProvider({ children }) {
     setPatients(pts);
   }, []);
 
+  const removePatient = useCallback(async (patientId) => {
+    await PatientRepo.remove(patientId);
+    const pts = await PatientRepo.getAll();
+    setPatients(pts);
+  }, []);
+
   const addUser = useCallback(async (newUser) => {
     const created = await UserRepo.add(newUser);
     const u = await UserRepo.getAll();
@@ -145,7 +151,7 @@ export function AppProvider({ children }) {
     lang, setLang, t,
     user, login, logout,
     users, addUser, updateUser, removeUser,
-    patients, addPatient, updatePatient, refreshPatients,
+    patients, addPatient, updatePatient, removePatient, refreshPatients,
     consentTemplate, questionnaireTemplate, refreshTemplates,
     logAudit,
     ready,
