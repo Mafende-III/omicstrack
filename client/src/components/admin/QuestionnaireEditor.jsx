@@ -1,10 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { TemplateRepo } from '../../storage/repository.js';
 
 const LANGS = ['en', 'fr', 'ki'];
 const LANG_LABELS = { en: 'English', fr: 'Français', ki: 'Kinyarwanda' };
 const FIELD_TYPES = ['text', 'number', 'date', 'textarea', 'select'];
+
+// Patient-profile paths that fields can source-from or showIf against.
+// Keep in sync with resolveSource() in QuestionnaireStep.jsx.
+const PATIENT_PATHS = [
+  { value: '', label: '— none —' },
+  { value: 'patient.age', label: 'patient.age' },
+  { value: 'patient.leukemiaType', label: 'patient.leukemiaType' },
+  { value: 'patient.treatment', label: 'patient.treatment' },
+  { value: 'patient.facility', label: 'patient.facility' },
+];
+
+// Operators supported by evaluateShowIf() at runtime.
+const SHOWIF_OPS = [
+  { value: 'equals',    label: 'equals' },
+  { value: 'notEquals', label: 'not equals' },
+  { value: 'in',        label: 'in (comma list)' },
+  { value: 'gt',        label: '>' },
+  { value: 'gte',       label: '>=' },
+  { value: 'lt',        label: '<' },
+  { value: 'lte',       label: '<=' },
+  { value: 'truthy',    label: 'is truthy' },
+  { value: 'falsy',     label: 'is falsy' },
+];
+const OPS_WITHOUT_VALUE = new Set(['truthy', 'falsy']);
+const OPS_LIST_VALUE = new Set(['in']);
+const OPS_NUMERIC_VALUE = new Set(['gt', 'gte', 'lt', 'lte']);
 
 function clone(o) {
   return JSON.parse(JSON.stringify(o));
@@ -26,6 +52,87 @@ function makeEmptySection(keySuffix) {
     labels: { en: '', fr: '', ki: '' },
     fields: [],
   };
+}
+
+function ShowIfBuilder({ value, refs, onChange, disabled }) {
+  const enabled = !!value;
+  const op = value?.op || 'equals';
+  const showValue = !OPS_WITHOUT_VALUE.has(op);
+  const valueAsText = OPS_LIST_VALUE.has(op)
+    ? (Array.isArray(value?.value) ? value.value.join(', ') : value?.value || '')
+    : (value?.value ?? '');
+
+  const setEnabled = (on) => {
+    if (!on) onChange(null);
+    else onChange({ field: '', op: 'equals', value: '' });
+  };
+
+  const patch = (k, v) => {
+    let next = { ...(value || { field: '', op: 'equals', value: '' }), [k]: v };
+    if (k === 'op') {
+      if (OPS_WITHOUT_VALUE.has(v)) delete next.value;
+      else if (OPS_LIST_VALUE.has(v) && !Array.isArray(next.value)) next.value = [];
+      else if (OPS_NUMERIC_VALUE.has(v)) next.value = next.value === '' || next.value == null ? 0 : Number(next.value) || 0;
+    }
+    onChange(next);
+  };
+
+  const onValueChange = (raw) => {
+    if (OPS_LIST_VALUE.has(op)) {
+      patch('value', raw.split(',').map((s) => s.trim()).filter(Boolean));
+    } else if (OPS_NUMERIC_VALUE.has(op)) {
+      patch('value', raw === '' ? '' : Number(raw));
+    } else {
+      patch('value', raw);
+    }
+  };
+
+  return (
+    <div style={{ background: 'var(--s2)', border: '1px dashed var(--bd)', borderRadius: 8, padding: 10 }}>
+      <label className="fc gap6" style={{ fontSize: '.82rem', color: 'var(--tx2)', cursor: disabled ? 'default' : 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => setEnabled(e.target.checked)}
+          disabled={disabled}
+        />
+        Show only when…
+      </label>
+      {enabled && (
+        <div className="fc gap6" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+          <select
+            className="sel"
+            value={value?.field || ''}
+            onChange={(e) => patch('field', e.target.value)}
+            disabled={disabled}
+            style={{ minWidth: 180, flex: '1 1 180px' }}
+          >
+            {refs.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </select>
+          <select
+            className="sel"
+            value={op}
+            onChange={(e) => patch('op', e.target.value)}
+            disabled={disabled}
+            style={{ minWidth: 110 }}
+          >
+            {SHOWIF_OPS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          {showValue && (
+            <input
+              className="inp"
+              type={OPS_NUMERIC_VALUE.has(op) ? 'number' : 'text'}
+              value={valueAsText}
+              onChange={(e) => onValueChange(e.target.value)}
+              disabled={disabled}
+              placeholder={OPS_LIST_VALUE.has(op) ? 'val1, val2, val3' : 'value'}
+              style={{ minWidth: 140, flex: '1 1 140px' }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function QuestionnaireEditor() {
@@ -142,7 +249,37 @@ export default function QuestionnaireEditor() {
   const updateField = (sIdx, fIdx, key, value) => {
     setDraft((d) => {
       const next = clone(d);
-      next.sections[sIdx].fields[fIdx][key] = value;
+      const target = next.sections[sIdx].fields[fIdx];
+      if (value === undefined || value === '' || value === null) {
+        delete target[key];
+      } else {
+        target[key] = value;
+      }
+      return next;
+    });
+  };
+
+  const updateSectionShowIf = (sIdx, showIf) => {
+    setDraft((d) => {
+      const next = clone(d);
+      if (!showIf) {
+        delete next.sections[sIdx].showIf;
+      } else {
+        next.sections[sIdx].showIf = showIf;
+      }
+      return next;
+    });
+  };
+
+  const updateFieldShowIf = (sIdx, fIdx, showIf) => {
+    setDraft((d) => {
+      const next = clone(d);
+      const f = next.sections[sIdx].fields[fIdx];
+      if (!showIf) {
+        delete f.showIf;
+      } else {
+        f.showIf = showIf;
+      }
       return next;
     });
   };
@@ -170,6 +307,21 @@ export default function QuestionnaireEditor() {
       setPublishing(false);
     }
   };
+
+  // Memoized list of all reference targets a showIf rule can point at:
+  // every q_xxx field across all sections + patient.X paths.
+  const allRefs = useMemo(() => {
+    const refs = [{ value: '', label: '— pick a field —' }];
+    PATIENT_PATHS.filter((p) => p.value).forEach((p) => refs.push(p));
+    if (draft?.sections) {
+      for (const sec of draft.sections) {
+        for (const f of sec.fields || []) {
+          if (f.id) refs.push({ value: f.id, label: `${f.id}${sec.key ? ` (${sec.key})` : ''}` });
+        }
+      }
+    }
+    return refs;
+  }, [draft]);
 
   if (!draft) {
     return <div style={{ color: 'var(--tx2)', fontSize: '.88rem' }}>{t.misc.loading}</div>;
@@ -280,6 +432,17 @@ export default function QuestionnaireEditor() {
             ))}
           </div>
 
+          {/* Section-level conditional logic */}
+          <div style={{ fontSize: '.72rem', color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
+            Conditional logic
+          </div>
+          <ShowIfBuilder
+            value={sec.showIf}
+            refs={allRefs}
+            onChange={(next) => updateSectionShowIf(sIdx, next)}
+            disabled={isViewing}
+          />
+
           {/* Fields */}
           <div style={{ borderTop: '1px solid var(--bd)', margin: '12px 0' }} />
 
@@ -360,7 +523,7 @@ export default function QuestionnaireEditor() {
               <div style={{ fontSize: '.72rem', color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
                 Label
               </div>
-              <div className="lang-grid">
+              <div className="lang-grid" style={{ marginBottom: 10 }}>
                 {LANGS.map((lang) => (
                   <div key={lang} className="lang-col">
                     <div className="lang-tag">{LANG_LABELS[lang]}</div>
@@ -374,6 +537,44 @@ export default function QuestionnaireEditor() {
                   </div>
                 ))}
               </div>
+
+              {/* Source from patient profile */}
+              <div className="g2" style={{ marginBottom: 8 }}>
+                <div className="f">
+                  <label className="lbl">Source from patient</label>
+                  <select
+                    className="sel"
+                    value={f.source || ''}
+                    onChange={(e) => updateField(sIdx, fIdx, 'source', e.target.value)}
+                    disabled={isViewing}
+                  >
+                    {PATIENT_PATHS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                </div>
+                <div className="f">
+                  <label className="lbl">&nbsp;</label>
+                  <label className="fc gap6" style={{ fontSize: '.85rem', color: 'var(--tx2)', paddingTop: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={!!f.readOnly}
+                      onChange={(e) => updateField(sIdx, fIdx, 'readOnly', e.target.checked ? true : null)}
+                      disabled={isViewing}
+                    />
+                    Read-only (lock to source value)
+                  </label>
+                </div>
+              </div>
+
+              {/* Field-level conditional logic */}
+              <div style={{ fontSize: '.72rem', color: 'var(--tx3)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 4 }}>
+                Conditional logic
+              </div>
+              <ShowIfBuilder
+                value={f.showIf}
+                refs={allRefs}
+                onChange={(next) => updateFieldShowIf(sIdx, fIdx, next)}
+                disabled={isViewing}
+              />
             </div>
           ))}
         </div>
