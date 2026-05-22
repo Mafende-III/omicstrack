@@ -233,19 +233,92 @@ export async function getDashboardStats(req, res) {
     else preCollection++;
   }
 
+  // This-week count: patients enrolled in the last 7 days
+  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const thisWeek = patients.filter((p) => new Date(p.enrolled_at) >= oneWeekAgo).length;
+
+  // Bottleneck: the step with the most patients pending. We also compute the
+  // mean wait time at that stage to give the dashboard's callout a usable
+  // recommendation ("19 patients waiting · mean wait 11 days").
+  const stepCounts = {
+    consent: parseInt(consentCount[0].c, 10),
+    questionnaire: parseInt(questCount[0].c, 10),
+    collection: parseInt(collectCount[0].c, 10),
+    pbmc: parseInt(pbmcCount[0].c, 10),
+    transfer: parseInt(transferCount[0].c, 10),
+  };
+  let bottleneckStep = null;
+  let bottleneckPending = 0;
+  for (const [k, done] of Object.entries(stepCounts)) {
+    const pending = patients.length - done;
+    if (pending > bottleneckPending) {
+      bottleneckPending = pending;
+      bottleneckStep = k;
+    }
+  }
+
+  let bottleneckMeanWaitDays = null;
+  if (bottleneckStep && bottleneckPending > 0) {
+    // For each patient who hasn't completed the bottleneck step, how long
+    // have they been "waiting"? Use the latest activity timestamp on the
+    // patient (updated_at) as a proxy.
+    const bottleneckTable = `${bottleneckStep}_steps`;
+    const rows = await db('patients as p')
+      .leftJoin(`${bottleneckTable} as s`, 's.patient_id', 'p.id')
+      .where((qb) => qb.whereNull('s.submitted').orWhere('s.submitted', false))
+      .modify((qb) => {
+        if (req.siteFilter) qb.whereIn('p.facility', req.siteFilter);
+      })
+      .select('p.updated_at');
+    if (rows.length > 0) {
+      const now = Date.now();
+      const totalDays = rows.reduce((sum, r) => sum + (now - new Date(r.updated_at).getTime()) / (24 * 60 * 60 * 1000), 0);
+      bottleneckMeanWaitDays = Math.round(totalDays / rows.length);
+    }
+  }
+
+  // Sample yield metrics — research-meaningful numbers from pbmc_steps + shipment_samples.
+  // We filter to submitted PBMC rows only so half-entered data doesn't skew the means.
+  const yieldRow = await db('pbmc_steps')
+    .where('submitted', true)
+    .whereIn('patient_id', patientIds)
+    .select(
+      db.raw('COALESCE(SUM(vials), 0)::int AS total_vials'),
+      db.raw("AVG(NULLIF(REGEXP_REPLACE(viability, '[^0-9.]', '', 'g'), '')::numeric) AS avg_viability"),
+    )
+    .first();
+
+  const shipRow = await db('shipment_samples')
+    .whereIn('patient_id', patientIds)
+    .select(
+      db.raw('COALESCE(SUM(vials_shipped), 0)::int AS shipped_total'),
+      db.raw("COUNT(*) FILTER (WHERE received = true) AS received_count"),
+      db.raw("COUNT(*) FILTER (WHERE received = true AND sample_condition = 'intact') AS intact_count"),
+    )
+    .first();
+
+  const receivedCount = parseInt(shipRow.received_count, 10) || 0;
+  const intactCount = parseInt(shipRow.intact_count, 10) || 0;
+  const yieldMetrics = {
+    totalVials: parseInt(yieldRow.total_vials, 10) || 0,
+    avgViability: yieldRow.avg_viability ? Number(parseFloat(yieldRow.avg_viability).toFixed(1)) : null,
+    shippedToLiege: parseInt(shipRow.shipped_total, 10) || 0,
+    receivedSamples: receivedCount,
+    qcPassRate: receivedCount > 0 ? Number(((intactCount / receivedCount) * 100).toFixed(1)) : null,
+  };
+
   res.json({
     total: patients.length,
+    thisWeek,
     byType,
     byFacility: req.user.canSeePii ? byFacility : {},
     byTreatment,
-    steps: {
-      consent: parseInt(consentCount[0].c, 10),
-      questionnaire: parseInt(questCount[0].c, 10),
-      collection: parseInt(collectCount[0].c, 10),
-      pbmc: parseInt(pbmcCount[0].c, 10),
-      transfer: parseInt(transferCount[0].c, 10),
-    },
+    steps: stepCounts,
     pipelineCounts: { preCollection, processing, ready, inTransit, received },
+    bottleneck: bottleneckStep
+      ? { step: bottleneckStep, pending: bottleneckPending, meanWaitDays: bottleneckMeanWaitDays }
+      : null,
+    yield: yieldMetrics,
   });
 }
 

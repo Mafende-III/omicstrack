@@ -111,7 +111,7 @@ function AppContent() {
             onBack={() => { setSelected(null); setView('patients'); }}
           />
         ) : safeView === 'dashboard' ? (
-          <Dashboard onViewPatient={handleViewPatient} />
+          <Dashboard onViewPatient={handleViewPatient} onNavigate={guardedSetView} />
         ) : safeView === 'patients' ? (
           <PatientList onSelect={handleViewPatient} />
         ) : safeView === 'shipments' ? (
