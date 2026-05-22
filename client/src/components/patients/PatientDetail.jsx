@@ -49,6 +49,7 @@ export default function PatientDetail({ patient, onBack }) {
   const [deleting, setDeleting] = useState(false);
 
   const readOnly = role === 'viewer' || role === 'liege';
+  const canEdit = hasCapability(user, CAPABILITIES.EDIT_PATIENT);
   const canDelete = hasCapability(user, CAPABILITIES.DELETE_PATIENT);
 
   const handleDelete = async () => {
@@ -125,7 +126,7 @@ export default function PatientDetail({ patient, onBack }) {
               </div>
             </div>
             <div className="fc gap6">
-              {!readOnly && (
+              {canEdit && (
                 <button className="btn btn-bd btn-sm" onClick={() => setEditing(true)}>
                   {t.pt.edit}
                 </button>
