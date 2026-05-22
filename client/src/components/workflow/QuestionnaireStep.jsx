@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
 import { api } from '../../storage/engine.js';
@@ -6,30 +6,76 @@ import { QF } from '../../constants/questionnaire.js';
 import FileViewer from '../shared/FileViewer.jsx';
 
 // Normalize either the DB template content or the bundled QF static module
-// into a single runtime shape: [{ key, label, fields: [{ id, type, label, options }] }, ...]
+// into a single runtime shape carrying the new conditional-logic metadata
+// (source / readOnly / showIf at field level, showIf at section level).
 function buildSections(template, lang, fallbackSecLabels) {
   if (template?.sections?.length) {
     return template.sections.map((sec) => ({
       key: sec.key,
       label: sec.labels?.[lang] || sec.labels?.en || sec.key,
+      showIf: sec.showIf || null,
       fields: sec.fields.map((f) => ({
         id: f.id,
         type: f.type || 'text',
         label: f.labels?.[lang] || f.labels?.en || f.id,
         options: f.options || [],
+        source: f.source || null,
+        readOnly: f.readOnly === true,
+        showIf: f.showIf || null,
       })),
     }));
   }
   return Object.keys(QF).map((key) => ({
     key,
     label: fallbackSecLabels?.[key] || key,
+    showIf: null,
     fields: QF[key].map((f) => ({
       id: f.id,
       type: f.type || 'text',
       label: f[lang] || f.en,
       options: f.opts || [],
+      source: null,
+      readOnly: false,
+      showIf: null,
     })),
   }));
+}
+
+// Resolve a dotted source path against the patient profile. Supported keys
+// are the camelCase patient fields exposed by the API (age, treatment,
+// leukemiaType, facility, name). Returns undefined when path doesn't resolve.
+function resolveSource(source, patient) {
+  if (!source || !patient) return undefined;
+  if (source.startsWith('patient.')) {
+    const key = source.slice('patient.'.length);
+    return patient[key];
+  }
+  return undefined;
+}
+
+// Evaluate a showIf rule. Returns true when the rule passes (i.e. the
+// section/field SHOULD render), or when the rule is null/missing.
+function evaluateShowIf(rule, formValues, patient) {
+  if (!rule) return true;
+  const { field, op, value } = rule;
+  let actual;
+  if (field?.startsWith('patient.')) {
+    actual = resolveSource(field, patient);
+  } else {
+    actual = formValues[field];
+  }
+  switch (op) {
+    case 'equals':    return actual === value;
+    case 'notEquals': return actual !== value;
+    case 'in':        return Array.isArray(value) && value.includes(actual);
+    case 'gt':        return Number(actual) >  Number(value);
+    case 'gte':       return Number(actual) >= Number(value);
+    case 'lt':        return Number(actual) <  Number(value);
+    case 'lte':       return Number(actual) <= Number(value);
+    case 'truthy':    return !!actual;
+    case 'falsy':     return !actual;
+    default:          return true;
+  }
 }
 
 const DEFAULTS = { mode: 'upload', fields: {}, sectionsDone: {}, file: null, fileName: '', submitted: false, submittedAt: null, submittedBy: null };
@@ -51,12 +97,57 @@ function compressImage(dataUrl, maxWidth = 1200) {
   });
 }
 
-export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
+export default function QuestionnaireStep({ patientId, patient, readOnly, onComplete }) {
   const { t, lang, user, users, questionnaireTemplate } = useApp();
   const langKey = ['en', 'fr', 'ki'].includes(lang) ? lang : 'en';
-  const sections = buildSections(questionnaireTemplate?.content, langKey, t.qsec);
+  const allSections = buildSections(questionnaireTemplate?.content, langKey, t.qsec);
 
-  const { data, update, save, submit, flash } = useStepData(patientId, 'questionnaire', DEFAULTS);
+  const { data, update, save, submit, flash, loading } = useStepData(patientId, 'questionnaire', DEFAULTS);
+
+  // Filter sections + fields by showIf when in edit mode. The submitted/view-
+  // details branch below uses `allSections` so previously-answered hidden
+  // fields still appear when reviewing a finished questionnaire.
+  const formValues = data.fields || {};
+  const visibleSections = allSections
+    .filter((s) => evaluateShowIf(s.showIf, formValues, patient))
+    .map((s) => ({
+      ...s,
+      fields: s.fields.filter((f) => evaluateShowIf(f.showIf, formValues, patient)),
+    }));
+  const sections = data.submitted ? allSections : visibleSections;
+
+  // Auto-populate source-backed fields after the initial fetch settles. We
+  // only write into local state; persistence happens when the user clicks
+  // Save. The `loading` guard prevents a race where useStepData's async fetch
+  // overwrites our auto-fill with empty defaults.
+  const autoFilledRef = useRef(false);
+  useEffect(() => {
+    if (loading) return;
+    if (autoFilledRef.current) return;
+    if (data.submitted || readOnly) return;
+    if (!patient) return;
+    if (!allSections.length) return;
+
+    const current = data.fields || {};
+    const updates = {};
+    for (const sec of allSections) {
+      for (const f of sec.fields) {
+        if (!f.source) continue;
+        const existing = current[f.id];
+        if (existing !== undefined && existing !== '' && existing !== null) continue;
+        const sourced = resolveSource(f.source, patient);
+        if (sourced !== undefined && sourced !== null && sourced !== '') {
+          updates[f.id] = String(sourced);
+        }
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      update({ fields: { ...current, ...updates } });
+    }
+    autoFilledRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, patient?.id, data.submitted, allSections.length]);
+
   const initialOpen = sections.reduce((acc, s, i) => ({ ...acc, [s.key]: i === 0 }), {});
   const [open, setOpen] = useState(initialOpen);
   const [showDetails, setShowDetails] = useState(false);
@@ -240,16 +331,24 @@ export default function QuestionnaireStep({ patientId, readOnly, onComplete }) {
               </div>
               {open[s.key] && (
                 <div className="acc-b">
-                  {s.fields.map((f) => (
-                    <div className="f" key={f.id}>
-                      <label className="lbl">{f.label}</label>
-                      {f.type === 'select'
-                        ? <select className="sel" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly}><option value="">&mdash;</option>{f.options.map((o) => <option key={o}>{o}</option>)}</select>
-                        : f.type === 'textarea'
-                          ? <textarea className="tea" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly} />
-                          : <input type={f.type} className="inp" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={readOnly} />}
-                    </div>
-                  ))}
+                  {s.fields.map((f) => {
+                    const fieldDisabled = readOnly || f.readOnly;
+                    const sourceHint = f.source && f.readOnly
+                      ? <span style={{ fontSize: '.7rem', color: 'var(--tx3)', marginLeft: 6, fontWeight: 400 }}>(from patient profile)</span>
+                      : f.source
+                        ? <span style={{ fontSize: '.7rem', color: 'var(--tx3)', marginLeft: 6, fontWeight: 400 }}>(pre-filled from profile, editable)</span>
+                        : null;
+                    return (
+                      <div className="f" key={f.id}>
+                        <label className="lbl">{f.label}{sourceHint}</label>
+                        {f.type === 'select'
+                          ? <select className="sel" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={fieldDisabled}><option value="">&mdash;</option>{f.options.map((o) => <option key={o}>{o}</option>)}</select>
+                          : f.type === 'textarea'
+                            ? <textarea className="tea" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={fieldDisabled} />
+                            : <input type={f.type} className="inp" value={data.fields[f.id] || ''} onChange={(e) => updF(f.id, e.target.value)} disabled={fieldDisabled} />}
+                      </div>
+                    );
+                  })}
                   {!readOnly && (
                     <label className="cbox mt8">
                       <input type="checkbox" checked={!!data.sectionsDone[s.key]} onChange={(e) => update({ sectionsDone: { ...data.sectionsDone, [s.key]: e.target.checked } })} />

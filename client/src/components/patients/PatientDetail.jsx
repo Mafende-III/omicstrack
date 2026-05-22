@@ -183,7 +183,7 @@ export default function PatientDetail({ patient, onBack }) {
       />
 
       {step === 'consent' && <ConsentStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
-      {step === 'questionnaire' && <QuestionnaireStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
+      {step === 'questionnaire' && <QuestionnaireStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
       {step === 'collection' && <CollectionStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
       {step === 'pbmc' && <PBMCStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
       {step === 'transfer' && <TransferStep patientId={patient.id} onComplete={checkCompleted} />}
