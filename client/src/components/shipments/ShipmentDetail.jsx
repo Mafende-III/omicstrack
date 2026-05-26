@@ -122,7 +122,7 @@ export default function ShipmentDetail({ shipment, onConfirmReception, onBack, o
                   onClick={() => onViewPatient?.({ id: sample.patientId, code: sample.patientCode, name: sample.patientName })}
                 >
                   <span className="code-pill">{sample.patientCode}</span>
-                  {canSeeField(user?.canSeePii, 'name') && sample.patientName && <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{sample.patientName}</span>}
+                  {canSeeField(user, 'name') && sample.patientName && <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{sample.patientName}</span>}
                 </div>
                 <div className="fc gap6">
                   {sample.facility && <span style={{ fontSize: '.78rem', color: 'var(--tx2)' }}>{sample.facility}</span>}

@@ -17,7 +17,7 @@ export async function getShipments(req, res) {
         'patients.facility as facility'
       );
 
-    result.push(formatShipment(s, samples, req.user.canSeePii));
+    result.push(formatShipment(s, samples, req.user));
   }
 
   res.json(result);
@@ -37,7 +37,7 @@ export async function getShipment(req, res) {
       'patients.name as patientName'
     );
 
-  res.json(formatShipment(shipment, samples, req.user.canSeePii));
+  res.json(formatShipment(shipment, samples, req.user));
 }
 
 export async function createShipment(req, res) {
@@ -108,7 +108,7 @@ export async function createShipment(req, res) {
       .join('patients', 'patients.id', 'shipment_samples.patient_id')
       .select('shipment_samples.*', 'patients.code as patientCode', 'patients.name as patientName');
 
-    res.status(201).json(formatShipment(shipment, sampleRows, req.user.canSeePii));
+    res.status(201).json(formatShipment(shipment, sampleRows, req.user));
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -207,7 +207,7 @@ export async function receiveShipment(req, res) {
       .join('patients', 'patients.id', 'shipment_samples.patient_id')
       .select('shipment_samples.*', 'patients.code as patientCode', 'patients.name as patientName');
 
-    res.json(formatShipment(updatedShipment, sampleRows, req.user.canSeePii));
+    res.json(formatShipment(updatedShipment, sampleRows, req.user));
   } catch (err) {
     await trx.rollback();
     throw err;
@@ -307,14 +307,14 @@ export async function getShippablePatients(req, res) {
         leukemiaType: p.leukemia_type,
         vialsTotal: pbmc.vials,
         vialsAvailable: available,
-      }, req.user.canSeePii));
+      }, req.user));
     }
   }
 
   res.json(result);
 }
 
-function formatShipment(s, samples = [], canSeePii = true) {
+function formatShipment(s, samples = [], user = null) {
   return {
     id: s.id,
     shipDate: s.ship_date,
@@ -337,6 +337,6 @@ function formatShipment(s, samples = [], canSeePii = true) {
       qcCellCount: sm.qc_cell_count,
       qcViability: sm.qc_viability,
       qcNotes: sm.qc_notes,
-    }, canSeePii)),
+    }, user)),
   };
 }

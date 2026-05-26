@@ -103,7 +103,7 @@ export default function CreateShipmentForm({ shippablePatients, onSubmit, onCanc
                 <div style={{ flex: 1 }}>
                   <div className="fc gap6 mb4">
                     <span className="code-pill">{p.code}</span>
-                    {canSeeField(user?.canSeePii, 'name') && p.name && <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{p.name}</span>}
+                    {canSeeField(user, 'name') && p.name && <span style={{ fontWeight: 600, fontSize: '.85rem' }}>{p.name}</span>}
                   </div>
                   <div style={{ fontSize: '.78rem', color: 'var(--tx2)' }}>
                     {p.facility && <>{p.facility} &middot; </>}{p.vialsAvailable} {ts.vialsAvailable}

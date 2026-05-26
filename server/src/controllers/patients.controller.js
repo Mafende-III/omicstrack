@@ -10,7 +10,7 @@ export async function getPatients(req, res) {
   }
 
   const patients = await query;
-  res.json(patients.map((p) => stripPii(formatPatient(p), req.user.canSeePii)));
+  res.json(patients.map((p) => stripPii(formatPatient(p), req.user)));
 }
 
 export async function getPatient(req, res) {
@@ -35,7 +35,7 @@ export async function getPatient(req, res) {
   ]);
 
   res.json({
-    ...stripPii(formatPatient(patient), req.user.canSeePii),
+    ...stripPii(formatPatient(patient), req.user),
     steps: {
       consent: !!consent?.submitted,
       questionnaire: !!questionnaire?.submitted,
@@ -85,7 +85,7 @@ export async function createPatient(req, res) {
     ipAddress: req.ip,
   });
 
-  res.status(201).json(stripPii(formatPatient(patient), req.user.canSeePii));
+  res.status(201).json(stripPii(formatPatient(patient), req.user));
 }
 
 export async function updatePatient(req, res) {
@@ -133,7 +133,7 @@ export async function updatePatient(req, res) {
     ipAddress: req.ip,
   });
 
-  res.json(stripPii(formatPatient(updated), req.user.canSeePii));
+  res.json(stripPii(formatPatient(updated), req.user));
 }
 
 export async function deletePatient(req, res) {
@@ -311,7 +311,7 @@ export async function getDashboardStats(req, res) {
     total: patients.length,
     thisWeek,
     byType,
-    byFacility: req.user.canSeePii ? byFacility : {},
+    byFacility: req.user ? byFacility : {},
     byTreatment,
     steps: stepCounts,
     pipelineCounts: { preCollection, processing, ready, inTransit, received },

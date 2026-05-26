@@ -78,7 +78,7 @@ export default function PatientList({ onSelect }) {
           <option value="">{t.dash.byType || 'All Types'}</option>
           {LK_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
-        {canSeeField(user?.canSeePii, 'facility') && (
+        {canSeeField(user, 'facility') && (
           <select
             className="sel"
             style={{ width: 'auto', minWidth: 130, padding: '6px 10px', fontSize: '.82rem' }}
@@ -121,7 +121,7 @@ export default function PatientList({ onSelect }) {
           <div>
             <div className="fc gap6 mb6">
               <span className="code-pill">{p.code}</span>
-              {canSeeField(user?.canSeePii, 'name') && <span className="pt-name">{p.name}</span>}
+              {canSeeField(user, 'name') && <span className="pt-name">{p.name}</span>}
             </div>
             <div className="pt-meta">
               {p.age != null && <>{p.age} yrs &middot; </>}{p.facility && <>{p.facility} &middot; </>}{p.enrolledAt?.split('T')[0]}

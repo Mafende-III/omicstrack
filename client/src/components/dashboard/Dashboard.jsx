@@ -136,7 +136,7 @@ export default function Dashboard({ onViewPatient, onNavigate }) {
       {/* ─── 7. Facility bars + Sample yield ──────── */}
       {!isLiegeView && totalPatients > 0 && (
         <div className="g2">
-          {canSeeField(user?.canSeePii, 'facility') && Object.keys(byFac).length > 0 && (
+          {canSeeField(user, 'facility') && Object.keys(byFac).length > 0 && (
             <FacilityBars byFac={byFac} total={totalPatients} />
           )}
           {yieldM && <SampleYieldCard yieldM={yieldM} />}

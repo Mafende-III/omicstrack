@@ -12,7 +12,12 @@ function generateAccessToken(user) {
       sub: user.id,
       role: user.role,
       sites: user.sites,
+      // Back-compat: canSeePii is the "all three" combined view, kept for old
+      // clients. New clients should use the per-field flags below.
       canSeePii: user.can_see_pii !== false,
+      canSeeName: user.can_see_name !== false,
+      canSeeAge: user.can_see_age !== false,
+      canSeeFacility: user.can_see_facility !== false,
       capabilities: Array.isArray(user.capabilities) && user.capabilities.length > 0
         ? user.capabilities
         : undefined, // omit if empty so middleware's fallback to role preset kicks in
@@ -91,6 +96,9 @@ export async function login(req, res) {
       sites: user.sites,
       isDefault: user.is_default,
       canSeePii: user.can_see_pii !== false,
+      canSeeName: user.can_see_name !== false,
+      canSeeAge: user.can_see_age !== false,
+      canSeeFacility: user.can_see_facility !== false,
       capabilities: user.capabilities || [],
     },
   });
@@ -243,6 +251,9 @@ export async function setupPassword(req, res) {
       sites: user.sites,
       isDefault: user.is_default,
       canSeePii: user.can_see_pii !== false,
+      canSeeName: user.can_see_name !== false,
+      canSeeAge: user.can_see_age !== false,
+      canSeeFacility: user.can_see_facility !== false,
       capabilities: user.capabilities || [],
     },
   });
@@ -262,6 +273,9 @@ export async function me(req, res) {
     sites: user.sites,
     isDefault: user.is_default,
     canSeePii: user.can_see_pii !== false,
+      canSeeName: user.can_see_name !== false,
+      canSeeAge: user.can_see_age !== false,
+      canSeeFacility: user.can_see_facility !== false,
     capabilities: user.capabilities || [],
   });
 }

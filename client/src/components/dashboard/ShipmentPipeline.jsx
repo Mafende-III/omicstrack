@@ -84,7 +84,7 @@ export default function ShipmentPipeline({ onViewPatient }) {
                 >
                   <div className="fc gap6 mb6">
                     <span className="code-pill">{p.code}</span>
-                    {canSeeField(user?.canSeePii, 'name') && <span style={{ fontWeight: 600, fontSize: '.78rem' }}>{p.name}</span>}
+                    {canSeeField(user, 'name') && <span style={{ fontWeight: 600, fontSize: '.78rem' }}>{p.name}</span>}
                   </div>
                   <div style={{ fontSize: '.68rem', color: 'var(--tx2)' }}>
                     {p.facility && <>{p.facility} &middot; </>}{p.leukemiaType}

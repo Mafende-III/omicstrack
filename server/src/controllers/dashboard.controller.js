@@ -46,7 +46,7 @@ async function buildClinicalAttention(user) {
   const pbmcRows = await pbmcQuery;
   for (const r of pbmcRows) {
     const daysSince = Math.floor((Date.now() - new Date(r.updated_at).getTime()) / (24 * 60 * 60 * 1000));
-    const masked = stripPii({ id: r.patient_id, code: r.code, name: r.name, age: r.age, facility: r.facility }, user.canSeePii);
+    const masked = stripPii({ id: r.patient_id, code: r.code, name: r.name, age: r.age, facility: r.facility }, user);
     items.push({
       type: 'pbmc_unsubmitted',
       severity: daysSince > 7 ? 'warn' : 'info',
@@ -73,7 +73,7 @@ async function buildClinicalAttention(user) {
     const daysSince = Math.floor((Date.now() - new Date(r.updated_at).getTime()) / (24 * 60 * 60 * 1000));
     // Skip ones already flagged via PBMC unsubmitted
     if (items.some((it) => it.patientId === r.patient_id)) continue;
-    const masked = stripPii({ id: r.patient_id, code: r.code, name: r.name, age: r.age, facility: r.facility }, user.canSeePii);
+    const masked = stripPii({ id: r.patient_id, code: r.code, name: r.name, age: r.age, facility: r.facility }, user);
     items.push({
       type: 'patient_stalled',
       severity: daysSince > 14 ? 'warn' : 'info',

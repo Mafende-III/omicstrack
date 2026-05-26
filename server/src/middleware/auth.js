@@ -18,11 +18,17 @@ export function authenticate(req, res, next) {
     const capabilities = Array.isArray(payload.capabilities) && payload.capabilities.length > 0
       ? payload.capabilities
       : capabilitiesForRole(payload.role);
+    // PII flags: prefer per-field, fall back to the combined canSeePii so
+    // legacy JWTs (issued before migration 012) still work until rotation.
+    const fallbackPii = payload.canSeePii !== false;
     req.user = {
       id: payload.sub,
       role: payload.role,
       sites: payload.sites || [],
-      canSeePii: payload.canSeePii !== false,
+      canSeePii: fallbackPii,
+      canSeeName: payload.canSeeName !== undefined ? payload.canSeeName : fallbackPii,
+      canSeeAge: payload.canSeeAge !== undefined ? payload.canSeeAge : fallbackPii,
+      canSeeFacility: payload.canSeeFacility !== undefined ? payload.canSeeFacility : fallbackPii,
       capabilities,
     };
     next();

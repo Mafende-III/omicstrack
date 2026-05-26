@@ -7,7 +7,7 @@ export default function UserManagement() {
   const { users, addUser, updateUser, removeUser, t } = useApp();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [f, setF] = useState({ name: '', username: '', email: '', role: 'entry', sites: [], canSeePii: true });
+  const [f, setF] = useState({ name: '', username: '', email: '', role: 'entry', sites: [], canSeeName: true, canSeeAge: true, canSeeFacility: true });
   const [err, setErr] = useState('');
   const [toast, setToast] = useState('');
 
@@ -26,9 +26,11 @@ export default function UserManagement() {
     if (users.find((u) => u.email && u.email.toLowerCase() === f.email.toLowerCase())) { setErr('Email already in use'); return; }
     setSaving(true);
     try {
-      const created = await addUser(f);
+      // Server still accepts legacy canSeePii — set it to true if any field is allowed
+      const payload = { ...f, canSeePii: f.canSeeName || f.canSeeAge || f.canSeeFacility };
+      const created = await addUser(payload);
       setAdding(false);
-      setF({ name: '', username: '', email: '', role: 'entry', sites: [], canSeePii: true });
+      setF({ name: '', username: '', email: '', role: 'entry', sites: [], canSeeName: true, canSeeAge: true, canSeeFacility: true });
       setErr('');
       const status = created?.welcomeEmailStatus;
       if (status === 'sent') {
@@ -90,10 +92,17 @@ export default function UserManagement() {
               </div>
             </div>
           )}
-          <label className="cbox mt12">
-            <input type="checkbox" checked={f.canSeePii} onChange={(e) => u('canSeePii', e.target.checked)} />
-            <span className="cbox-lbl">{t.users.canSeePii || 'Can view patient personal data (name, age, facility)'}</span>
-          </label>
+          <div className="card-inner mt12">
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 6 }}>
+              Patient personal data access
+            </div>
+            <div style={{ fontSize: '.78rem', color: 'var(--tx3)', marginBottom: 10 }}>
+              Grant per-field access. Useful when sharing limited views with a collaborator.
+            </div>
+            <label className="cbox"><input type="checkbox" checked={f.canSeeName} onChange={(e) => u('canSeeName', e.target.checked)} /><span className="cbox-lbl">Can view patient name</span></label>
+            <label className="cbox"><input type="checkbox" checked={f.canSeeAge} onChange={(e) => u('canSeeAge', e.target.checked)} /><span className="cbox-lbl">Can view patient age</span></label>
+            <label className="cbox"><input type="checkbox" checked={f.canSeeFacility} onChange={(e) => u('canSeeFacility', e.target.checked)} /><span className="cbox-lbl">Can view patient facility</span></label>
+          </div>
           <div className="fc gap8 mt12" style={{ justifyContent: 'flex-end' }}>
             <button className="btn btn-bd" onClick={() => { setAdding(false); setErr(''); }}>{t.pt.cancel}</button>
             <button className="btn btn-ac" onClick={create} disabled={saving}>{saving ? '...' : t.users.create}</button>
@@ -139,7 +148,15 @@ export default function UserManagement() {
                   @{usr.username}
                   {usr.email && <> &middot; {usr.email}</>}
                   {usr.role === 'entry' && usr.sites?.length ? ` \u00b7 ${usr.sites.join(', ')}` : ''}
-                  {usr.canSeePii === false && <> &middot; <span style={{ color: 'var(--err)' }}>No PII access</span></>}
+                  {(() => {
+                    const fields = [];
+                    if (usr.canSeeName === false) fields.push('name');
+                    if (usr.canSeeAge === false) fields.push('age');
+                    if (usr.canSeeFacility === false) fields.push('facility');
+                    if (fields.length === 0) return null;
+                    const label = fields.length === 3 ? 'No PII access' : `Cannot see: ${fields.join(', ')}`;
+                    return <> &middot; <span style={{ color: 'var(--err)' }}>{label}</span></>;
+                  })()}
                 </div>
               </div>
               <div className="fc gap6">
@@ -169,7 +186,11 @@ function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
     email: user.email || '',
     role: user.role,
     sites: user.sites || [],
-    canSeePii: user.canSeePii !== false,
+    // Per-field PII flags; fall back to legacy canSeePii if the user record
+    // predates migration 012 (those rows haven't been split yet).
+    canSeeName: user.canSeeName !== undefined ? user.canSeeName : (user.canSeePii !== false),
+    canSeeAge: user.canSeeAge !== undefined ? user.canSeeAge : (user.canSeePii !== false),
+    canSeeFacility: user.canSeeFacility !== undefined ? user.canSeeFacility : (user.canSeePii !== false),
     capabilities: initialCaps,
   });
   const [capsCustomized, setCapsCustomized] = useState(false);
@@ -214,7 +235,11 @@ function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
       email: f.email || null,
       role: f.role,
       sites: f.sites,
-      canSeePii: f.canSeePii,
+      // Combined canSeePii kept as true if any field is allowed (back-compat)
+      canSeePii: f.canSeeName || f.canSeeAge || f.canSeeFacility,
+      canSeeName: f.canSeeName,
+      canSeeAge: f.canSeeAge,
+      canSeeFacility: f.canSeeFacility,
       capabilities: f.capabilities,
     });
     setSaving(false);
@@ -246,10 +271,17 @@ function EditUserCard({ user, onCancel, onSave, roleColors, t, err }) {
           </div>
         </div>
       )}
-      <label className="cbox mt12">
-        <input type="checkbox" checked={f.canSeePii} onChange={(e) => u('canSeePii', e.target.checked)} />
-        <span className="cbox-lbl">Can view patient personal data (name, age, facility)</span>
-      </label>
+      <div className="card-inner mt12">
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 6 }}>
+          Patient personal data access
+        </div>
+        <div style={{ fontSize: '.78rem', color: 'var(--tx3)', marginBottom: 10 }}>
+          Grant per-field access. Useful when sharing limited views with a collaborator.
+        </div>
+        <label className="cbox"><input type="checkbox" checked={f.canSeeName} onChange={(e) => u('canSeeName', e.target.checked)} /><span className="cbox-lbl">Can view patient name</span></label>
+        <label className="cbox"><input type="checkbox" checked={f.canSeeAge} onChange={(e) => u('canSeeAge', e.target.checked)} /><span className="cbox-lbl">Can view patient age</span></label>
+        <label className="cbox"><input type="checkbox" checked={f.canSeeFacility} onChange={(e) => u('canSeeFacility', e.target.checked)} /><span className="cbox-lbl">Can view patient facility</span></label>
+      </div>
 
       <div className="card-inner mt16">
         <div className="fb mb12">

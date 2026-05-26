@@ -10,14 +10,14 @@ import { capabilitiesForRole, CAPABILITIES } from '../constants/capabilities.js'
 
 export async function getUsers(req, res) {
   const users = await db('users')
-    .select('id', 'name', 'username', 'email', 'role', 'sites', 'can_see_pii', 'capabilities', 'is_default', 'created_at', 'created_by', 'welcome_email_sent_at')
+    .select('id', 'name', 'username', 'email', 'role', 'sites', 'can_see_pii', 'can_see_name', 'can_see_age', 'can_see_facility', 'capabilities', 'is_default', 'created_at', 'created_by', 'welcome_email_sent_at')
     .orderBy('created_at', 'asc');
 
   res.json(users.map(formatUser));
 }
 
 export async function createUser(req, res) {
-  const { name, username, email, role, sites, canSeePii } = req.validated;
+  const { name, username, email, role, sites, canSeePii, canSeeName, canSeeAge, canSeeFacility } = req.validated;
 
   const existing = await db('users').where('username', username).first();
   if (existing) {
@@ -49,6 +49,9 @@ export async function createUser(req, res) {
       role,
       sites: sites || [],
       can_see_pii: canSeePii !== false,
+      can_see_name: canSeeName !== undefined ? canSeeName : (canSeePii !== false),
+      can_see_age: canSeeAge !== undefined ? canSeeAge : (canSeePii !== false),
+      can_see_facility: canSeeFacility !== undefined ? canSeeFacility : (canSeePii !== false),
       capabilities: initialCapabilities,
       is_default: false,
       created_by: req.user.id,
@@ -107,7 +110,7 @@ export async function createUser(req, res) {
 
 export async function updateUser(req, res) {
   const { id } = req.params;
-  const { name, email, role, sites, canSeePii, capabilities } = req.validated;
+  const { name, email, role, sites, canSeePii, canSeeName, canSeeAge, canSeeFacility, capabilities } = req.validated;
 
   const user = await db('users').where('id', id).first();
   if (!user) {
@@ -140,6 +143,9 @@ export async function updateUser(req, res) {
   }
   if (sites !== undefined) updates.sites = sites;
   if (canSeePii !== undefined) updates.can_see_pii = canSeePii;
+  if (canSeeName !== undefined) updates.can_see_name = canSeeName;
+  if (canSeeAge !== undefined) updates.can_see_age = canSeeAge;
+  if (canSeeFacility !== undefined) updates.can_see_facility = canSeeFacility;
   if (capabilities !== undefined) {
     // Validate every capability is known
     const known = new Set(Object.values(CAPABILITIES));
@@ -207,6 +213,9 @@ function formatUser(u) {
     role: u.role,
     sites: u.sites,
     canSeePii: u.can_see_pii !== false,
+    canSeeName: u.can_see_name !== false,
+    canSeeAge: u.can_see_age !== false,
+    canSeeFacility: u.can_see_facility !== false,
     capabilities: u.capabilities || [],
     isDefault: u.is_default,
     createdAt: u.created_at,
