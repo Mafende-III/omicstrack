@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OmicsTrack — Dashboard redesign preview</title>
+<style>
+  :root {
+    --ac: #008573;
+    --ac-dark: #006659;
+    --ac-bg: #e8f5f2;
+    --ok: #16a34a;
+    --warn: #d97706;
+    --err: #dc2626;
+    --info: #4B6BFB;
+    --liege: #7C3AED;
+
+    --bg: #fafafa;
+    --card: #ffffff;
+    --s2: #f4f6f5;
+    --bd: #e4e6e3;
+    --tx: #1a1a1a;
+    --tx2: #4a4a4a;
+    --tx3: #8a8a8a;
+
+    --font-body: "Times New Roman", Georgia, serif;
+    --font-display: "Syne", "Helvetica Neue", sans-serif;
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.03);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.06);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--tx); font-family: var(--font-body); }
+
+  .shell { max-width: 1080px; margin: 0 auto; padding: 24px 32px 64px; }
+
+  /* ─── App header ─── */
+  .app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 18px; margin-bottom: 24px; border-bottom: 1px solid var(--bd);
+  }
+  .brand { font-family: var(--font-display); font-weight: 800; font-size: 1.1rem; letter-spacing: -.01em; }
+  .brand-dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--ac); margin-right: 8px; vertical-align: middle; }
+  .nav { display: flex; gap: 18px; font-family: var(--font-ui); font-size: .85rem; color: var(--tx2); }
+  .nav a { color: var(--tx2); text-decoration: none; padding: 6px 2px; border-bottom: 2px solid transparent; }
+  .nav a.on { color: var(--ac); border-color: var(--ac); font-weight: 600; }
+
+  .role-switch { display: flex; gap: 0; font-family: var(--font-ui); font-size: .78rem; border: 1px solid var(--bd); border-radius: 8px; overflow: hidden; }
+  .role-switch button { border: 0; background: #fff; padding: 7px 12px; cursor: pointer; color: var(--tx2); }
+  .role-switch button.on { background: var(--ac); color: #fff; font-weight: 600; }
+
+  /* ─── Page header ─── */
+  .page-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .page-head h1 {
+    margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; letter-spacing: -.015em;
+  }
+  .page-head .sub { font-family: var(--font-ui); font-size: .78rem; color: var(--tx3); margin-top: 4px; }
+
+  .btn-primary {
+    font-family: var(--font-display); font-weight: 600; font-size: .85rem;
+    background: var(--ac); color: #fff; border: 0; border-radius: 10px;
+    padding: 11px 18px; cursor: pointer; box-shadow: var(--shadow-sm);
+  }
+  .btn-primary:hover { background: var(--ac-dark); }
+
+  /* ─── KPI row ─── */
+  .kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 22px; }
+  .kpi {
+    background: var(--card); border: 1px solid var(--bd); border-radius: 12px;
+    padding: 18px 20px; box-shadow: var(--shadow-sm);
+  }
+  .kpi .lbl { font-family: var(--font-ui); font-size: .72rem; color: var(--tx3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; font-weight: 600; }
+  .kpi .val { font-family: var(--font-display); font-weight: 800; font-size: 2.2rem; line-height: 1; letter-spacing: -.02em; }
+  .kpi .val .unit { font-size: 1rem; color: var(--tx3); font-weight: 600; margin-left: 4px; }
+  .kpi .meta { font-family: var(--font-ui); font-size: .76rem; color: var(--tx2); margin-top: 8px; }
+
+  /* ─── Section header ─── */
+  .sec-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .sec-head h2 {
+    margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1rem; letter-spacing: -.005em;
+  }
+  .sec-head .count {
+    font-family: var(--font-ui); font-size: .78rem; color: var(--tx3);
+  }
+  .sec-head .link { font-family: var(--font-ui); font-size: .8rem; color: var(--ac); text-decoration: none; font-weight: 600; }
+  .sec-head .link:hover { text-decoration: underline; }
+
+  /* ─── Attention list ─── */
+  .attention { background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 16px 18px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
+  .att-row { display: grid; grid-template-columns: 10px 1fr auto; gap: 14px; align-items: center; padding: 12px 4px; border-top: 1px solid var(--bd); cursor: pointer; }
+  .att-row:first-of-type { border-top: 0; }
+  .att-row:hover .open { color: var(--ac-dark); }
+  .att-row .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .att-row .dot.warn { background: var(--err); }
+  .att-row .dot.info { background: var(--warn); }
+  .att-row .main { font-family: var(--font-ui); font-size: .9rem; color: var(--tx); font-weight: 500; }
+  .att-row .main .code { font-family: var(--font-display); font-weight: 700; color: var(--ac); margin-right: 6px; }
+  .att-row .det { font-family: var(--font-ui); font-size: .76rem; color: var(--tx3); margin-top: 3px; }
+  .att-row .open { font-family: var(--font-ui); font-size: .78rem; color: var(--ac); font-weight: 600; }
+
+  .empty {
+    background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 18px 20px;
+    font-family: var(--font-ui); font-size: .85rem; color: var(--tx3); margin-bottom: 22px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ─── Pipeline bars ─── */
+  .pipeline {
+    background: var(--card); border: 1px solid var(--bd); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 22px; box-shadow: var(--shadow-sm);
+  }
+  .pipe-row { display: grid; grid-template-columns: 90px 1fr 56px; gap: 14px; align-items: center; padding: 9px 0; }
+  .pipe-row .label { font-family: var(--font-ui); font-size: .82rem; color: var(--tx2); font-weight: 500; }
+  .pipe-row .track { height: 22px; background: var(--s2); border-radius: 6px; overflow: hidden; position: relative; }
+  .pipe-row .fill { height: 100%; background: var(--ac); border-radius: 6px; transition: width .4s ease; }
+  .pipe-row .fill.bottleneck { background: var(--err); }
+  .pipe-row .num { font-family: var(--font-display); font-weight: 700; font-size: .95rem; text-align: right; }
+  .pipe-row .num.bottleneck { color: var(--err); }
+  .pipe-note {
+    margin-top: 12px; padding: 10px 12px; background: #fef2f2; border-radius: 8px;
+    font-family: var(--font-ui); font-size: .82rem; color: var(--tx);
+  }
+  .pipe-note strong { color: var(--err); }
+
+  /* ─── By type strip ─── */
+  .typestrip { background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 16px 20px; box-shadow: var(--shadow-sm); margin-bottom: 22px; }
+  .typestrip-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--s2); margin-top: 4px; }
+  .typestrip-seg { height: 100%; }
+  .typestrip-legend { display: flex; flex-wrap: wrap; gap: 14px 20px; margin-top: 14px; font-family: var(--font-ui); font-size: .82rem; }
+  .typestrip-legend .item { display: inline-flex; align-items: center; gap: 8px; }
+  .typestrip-legend .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .typestrip-legend .k { color: var(--tx); font-weight: 600; }
+  .typestrip-legend .v { color: var(--tx3); }
+
+  /* ─── QC delta (Liège) ─── */
+  .qc-delta { background: var(--card); border: 1px solid var(--bd); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow-sm); }
+  .qc-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--bd); font-family: var(--font-ui); font-size: .85rem; }
+  .qc-row:first-of-type { border-top: 0; padding-top: 4px; }
+  .qc-row .id { font-family: var(--font-display); font-weight: 700; color: var(--tx); }
+  .qc-row .v { color: var(--tx2); }
+  .qc-row .delta { font-weight: 700; }
+  .qc-row .delta.bad { color: var(--err); }
+  .qc-row .delta.ok { color: var(--ok); }
+
+  /* ─── Footer link ─── */
+  .footer-link {
+    text-align: center; font-family: var(--font-ui); font-size: .8rem; color: var(--tx3); margin-top: 8px;
+  }
+  .footer-link a { color: var(--tx2); text-decoration: none; border-bottom: 1px dotted var(--tx3); }
+
+  /* ─── View notes ─── */
+  .note {
+    background: #fffbeb; border: 1px solid #fde68a; color: #78350f;
+    padding: 10px 14px; border-radius: 8px; font-family: var(--font-ui);
+    font-size: .8rem; margin: 0 0 18px; line-height: 1.5;
+  }
+  .note strong { color: #422006; }
+
+  .hidden { display: none; }
+
+  /* Comparison strip */
+  .compare-bar {
+    background: #1a1a1a; color: #fff; padding: 10px 32px;
+    font-family: var(--font-ui); font-size: .8rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .compare-bar .label { opacity: .7; }
+  .compare-bar a { color: #fff; text-decoration: underline; opacity: .85; }
+</style>
+</head>
+<body>
+
+<div class="compare-bar">
+  <span class="label">Preview · Dashboard redesign proposal</span>
+  <span>Theme preserved · structure simplified · use the toggle to switch role views</span>
+</div>
+
+<div class="shell">
+
+  <!-- App header -->
+  <div class="app-header">
+    <div class="brand"><span class="brand-dot"></span>OmicsTrack</div>
+    <div class="nav">
+      <a href="#" class="on">Dashboard</a>
+      <a href="#">Patients</a>
+      <a href="#">Shipments</a>
+      <a href="#">Analytics</a>
+      <a href="#">Activity</a>
+    </div>
+    <div class="role-switch">
+      <button class="on" data-role="admin" onclick="setRole('admin')">Admin / PI</button>
+      <button data-role="entry" onclick="setRole('entry')">Entry</button>
+      <button data-role="liege" onclick="setRole('liege')">Liège</button>
+    </div>
+  </div>
+
+  <!-- ===================== ADMIN / PI ===================== -->
+  <div id="view-admin">
+    <div class="page-head">
+      <div>
+        <h1>Esperance</h1>
+        <div class="sub">National Reference Laboratory, Rwanda</div>
+      </div>
+      <button class="btn-primary">Add patient</button>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="lbl">Patients</div>
+        <div class="val">4</div>
+        <div class="meta">1 enrolled this week</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Vials in storage</div>
+        <div class="val">23</div>
+        <div class="meta">across 3 facilities</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Avg viability</div>
+        <div class="val">94<span class="unit">%</span></div>
+        <div class="meta">n = 3 submitted PBMC</div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>By leukemia type</h2>
+      <span class="count">4 patients</span>
+    </div>
+    <div class="typestrip">
+      <div class="typestrip-bar">
+        <div class="typestrip-seg" style="width:75%; background:#008573;"></div>
+        <div class="typestrip-seg" style="width:25%; background:#4B6BFB;"></div>
+      </div>
+      <div class="typestrip-legend">
+        <div class="item"><span class="sw" style="background:#008573;"></span><span class="k">AML</span><span class="v">3 · 75%</span></div>
+        <div class="item"><span class="sw" style="background:#4B6BFB;"></span><span class="k">CLL</span><span class="v">1 · 25%</span></div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>Needs attention</h2>
+      <span class="count">3 items</span>
+    </div>
+    <div class="attention">
+      <div class="att-row">
+        <div class="dot warn"></div>
+        <div>
+          <div class="main"><span class="code">P-003</span>Uzaribara Ignace — PBMC saved, not submitted</div>
+          <div class="det">11 days since last edit</div>
+        </div>
+        <div class="open">Open →</div>
+      </div>
+      <div class="att-row">
+        <div class="dot warn"></div>
+        <div>
+          <div class="main"><span class="code">P-002</span>Nsengiyumva Schadrack — no activity in 14 days</div>
+          <div class="det">Stalled at Collection · KFH</div>
+        </div>
+        <div class="open">Open →</div>
+      </div>
+      <div class="att-row">
+        <div class="dot info"></div>
+        <div>
+          <div class="main">Shipment LT-2026-04 still in transit</div>
+          <div class="det">Dispatched 9 days ago · 8 vials, 2 patients</div>
+        </div>
+        <div class="open">Open →</div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>Pipeline</h2>
+      <a href="#" class="link">See analytics →</a>
+    </div>
+    <div class="pipeline">
+      <div class="pipe-row">
+        <div class="label">Consent</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+        <div class="num">4 / 4</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">Questionnaire</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+        <div class="num">4 / 4</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">Collection</div>
+        <div class="track"><div class="fill" style="width:75%"></div></div>
+        <div class="num">3 / 4</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">PBMC</div>
+        <div class="track"><div class="fill bottleneck" style="width:25%"></div></div>
+        <div class="num bottleneck">1 / 4</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">Transfer</div>
+        <div class="track"><div class="fill" style="width:25%"></div></div>
+        <div class="num">1 / 4</div>
+      </div>
+      <div class="pipe-note">
+        <strong>Bottleneck at PBMC</strong> · 3 waiting · avg 8 days
+      </div>
+    </div>
+
+    <div class="footer-link">
+      <a href="#">View recent activity</a>
+    </div>
+  </div>
+
+  <!-- ===================== ENTRY ===================== -->
+  <div id="view-entry" class="hidden">
+    <div class="page-head">
+      <div>
+        <h1>Jean-Paul</h1>
+        <div class="sub">CHUK · Data entry</div>
+      </div>
+      <button class="btn-primary">Add patient</button>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="lbl">My patients</div>
+        <div class="val">2</div>
+        <div class="meta">at CHUK</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Awaiting my action</div>
+        <div class="val">1</div>
+        <div class="meta">PBMC unsubmitted</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">Vials I prepared</div>
+        <div class="val">12</div>
+        <div class="meta">avg 95% viability</div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>Needs attention</h2>
+      <span class="count">1 item</span>
+    </div>
+    <div class="attention">
+      <div class="att-row">
+        <div class="dot warn"></div>
+        <div>
+          <div class="main"><span class="code">P-003</span>Uzaribara Ignace — PBMC saved, not submitted</div>
+          <div class="det">11 days since last edit</div>
+        </div>
+        <div class="open">Open →</div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>Your patients</h2>
+    </div>
+    <div class="pipeline">
+      <div class="pipe-row">
+        <div class="label">Consent</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+        <div class="num">2 / 2</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">Questionnaire</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+        <div class="num">2 / 2</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">Collection</div>
+        <div class="track"><div class="fill" style="width:100%"></div></div>
+        <div class="num">2 / 2</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">PBMC</div>
+        <div class="track"><div class="fill bottleneck" style="width:50%"></div></div>
+        <div class="num bottleneck">1 / 2</div>
+      </div>
+      <div class="pipe-row">
+        <div class="label">Transfer</div>
+        <div class="track"><div class="fill" style="width:50%"></div></div>
+        <div class="num">1 / 2</div>
+      </div>
+      <div class="pipe-note">
+        <strong>Slowest patient:</strong> P-003 — 11 days at PBMC
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== LIÈGE ===================== -->
+  <div id="view-liege" class="hidden">
+    <div class="page-head">
+      <div>
+        <h1>Liège lab</h1>
+        <div class="sub">University of Liège · Sample reception</div>
+      </div>
+    </div>
+
+    <div class="kpi-row" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="kpi">
+        <div class="lbl">Awaiting receipt</div>
+        <div class="val">2</div>
+        <div class="meta">12 vials in transit</div>
+      </div>
+      <div class="kpi">
+        <div class="lbl">QC pass rate</div>
+        <div class="val">87<span class="unit">%</span></div>
+        <div class="meta">last 30 days · 15 samples</div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>Needs attention</h2>
+      <span class="count">2 items</span>
+    </div>
+    <div class="attention">
+      <div class="att-row">
+        <div class="dot warn"></div>
+        <div>
+          <div class="main">Shipment LT-2026-03 — partial, needs final receipt</div>
+          <div class="det">5 vials remaining · dispatched 12 days ago</div>
+        </div>
+        <div class="open">Open →</div>
+      </div>
+      <div class="att-row">
+        <div class="dot info"></div>
+        <div>
+          <div class="main">Shipment LT-2026-04 awaiting receipt</div>
+          <div class="det">8 vials · 2 patients · dispatched 9 days ago</div>
+        </div>
+        <div class="open">Open →</div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>QC delta · origin vs receipt</h2>
+      <a href="#" class="link">See all →</a>
+    </div>
+    <div class="qc-delta">
+      <div class="qc-row">
+        <div class="id">P-001 · GASANA Claude</div>
+        <div class="v">Origin 96%</div>
+        <div class="v">Receipt 94%</div>
+        <div class="delta ok">−2%</div>
+      </div>
+      <div class="qc-row">
+        <div class="id">P-002 · Nsengiyumva S.</div>
+        <div class="v">Origin 92%</div>
+        <div class="v">Receipt 78%</div>
+        <div class="delta bad">−14%</div>
+      </div>
+      <div class="qc-row">
+        <div class="id">P-004 · Ruzagiriza C.</div>
+        <div class="v">Origin 95%</div>
+        <div class="v">Receipt 93%</div>
+        <div class="delta ok">−2%</div>
+      </div>
+      <div class="pipe-note" style="margin-top:14px;">
+        <strong>1 sample</strong> lost ≥10% viability in transit · review cold-chain notes
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function setRole(role) {
+    ['admin','entry','liege'].forEach(r => {
+      document.getElementById('view-' + r).classList.toggle('hidden', r !== role);
+    });
+    document.querySelectorAll('.role-switch button').forEach(b => {
+      b.classList.toggle('on', b.dataset.role === role);
+    });
+  }
+</script>
+</body>
+</html>
