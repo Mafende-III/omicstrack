@@ -104,7 +104,7 @@ function AppContent() {
         view={activeView}
         setView={guardedSetView}
       />
-      <div className="main">
+      <div className={`main ${selected ? 'wide' : ''}`}>
         {selected ? (
           <PatientDetail
             patient={selected}

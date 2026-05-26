@@ -48,6 +48,12 @@ export default function PatientDetail({ patient, onBack }) {
   const [completed, setCompleted] = useState([]);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [overallNoteCount, setOverallNoteCount] = useState(0);
+
+  const scrollToOverallNotes = useCallback(() => {
+    const el = document.getElementById('pt-overall-notes');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   const readOnly = role === 'viewer' || role === 'liege';
   const canEdit = hasCapability(user, CAPABILITIES.EDIT_PATIENT);
@@ -113,6 +119,16 @@ export default function PatientDetail({ patient, onBack }) {
               <div className="fc gap8 mb6">
                 <span className="code-pill">{patient.code}</span>
                 {canSeeField(user, 'name') && <span className="pt-bn">{patient.name}</span>}
+                {overallNoteCount > 0 && (
+                  <button
+                    type="button"
+                    className="pt-notes-chip"
+                    onClick={scrollToOverallNotes}
+                    title={`${overallNoteCount} overall note${overallNoteCount === 1 ? '' : 's'} — click to jump`}
+                  >
+                    &#128172; {overallNoteCount}
+                  </button>
+                )}
               </div>
               <div className="pt-bm">
                 {patient.age != null && canSeeField(user, 'age') && <><span>{patient.age} yrs</span><span>&middot;</span></>}
@@ -184,20 +200,28 @@ export default function PatientDetail({ patient, onBack }) {
         onNav={(s) => { setStep(s); checkCompleted(); }}
       />
 
-      {step === 'consent' && <ConsentStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
-      {step === 'questionnaire' && <QuestionnaireStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
-      {step === 'collection' && <CollectionStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
-      {step === 'pbmc' && <PBMCStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
-      {step === 'transfer' && <TransferStep patientId={patient.id} onComplete={checkCompleted} />}
+      <div className="pt-detail-grid">
+        <div className="pt-detail-main">
+          {step === 'consent' && <ConsentStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
+          {step === 'questionnaire' && <QuestionnaireStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
+          {step === 'collection' && <CollectionStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
+          {step === 'pbmc' && <PBMCStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
+          {step === 'transfer' && <TransferStep patientId={patient.id} onComplete={checkCompleted} />}
 
-      {/* Per-step comment thread — one per workflow stage */}
-      {step && step !== 'transfer' && (
-        <NotesPanel patientId={patient.id} step={step} compact />
-      )}
+          {/* Per-step comment thread — one per workflow stage */}
+          {step && step !== 'transfer' && (
+            <NotesPanel patientId={patient.id} step={step} compact />
+          )}
+        </div>
 
-      {/* Overall patient notes — visible across all steps */}
-      <div style={{ marginTop: 24 }}>
-        <NotesPanel patientId={patient.id} step="overall" title="Overall patient notes" />
+        <aside className="pt-detail-side" id="pt-overall-notes">
+          <NotesPanel
+            patientId={patient.id}
+            step="overall"
+            title="Overall patient notes"
+            onCountChange={setOverallNoteCount}
+          />
+        </aside>
       </div>
     </div>
   );

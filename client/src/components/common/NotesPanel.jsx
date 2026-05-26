@@ -19,7 +19,7 @@ function formatWhen(iso) {
   return isToday ? `today ${time}` : `${d.toLocaleDateString()} ${time}`;
 }
 
-export default function NotesPanel({ patientId, step, compact = false, title = null }) {
+export default function NotesPanel({ patientId, step, compact = false, title = null, onCountChange = null }) {
   const { user } = useApp();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,11 @@ export default function NotesPanel({ patientId, step, compact = false, title = n
   }, [patientId, step]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  // Notify parent of count changes (used by PatientDetail to render a chip)
+  useEffect(() => {
+    if (onCountChange) onCountChange(notes.length);
+  }, [notes.length, onCountChange]);
 
   const post = async () => {
     const trimmed = body.trim();
