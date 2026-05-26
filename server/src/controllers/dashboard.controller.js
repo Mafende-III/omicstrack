@@ -57,30 +57,58 @@ async function buildClinicalAttention(user) {
     });
   }
 
-  // 2. Patients whose record hasn't moved in >7 days and aren't fully done
-  let stalledQuery = db('patients as p')
+  // 2. Patients with no workflow activity in >7 days (and not yet fully done).
+  //
+  // "Activity" = the most recent updated_at across the patient's step rows,
+  // floored at enrolled_at. We deliberately do NOT use patients.updated_at:
+  // step submissions don't touch it, and schema migrations that rewrite
+  // patient columns DO touch it — both make patients.updated_at a misleading
+  // signal for "research stalled".
+  const stalledSub = db('patients as p')
+    .leftJoin('consent_steps as c', 'c.patient_id', 'p.id')
+    .leftJoin('questionnaire_steps as q', 'q.patient_id', 'p.id')
+    .leftJoin('collection_steps as co', 'co.patient_id', 'p.id')
+    .leftJoin('pbmc_steps as pb', 'pb.patient_id', 'p.id')
     .leftJoin('transfer_steps as t', 't.patient_id', 'p.id')
-    .where('p.updated_at', '<', cutoff)
     .where((qb) => qb.whereNull('t.receipt_confirmed').orWhere('t.receipt_confirmed', false))
-    .select('p.id as patient_id', 'p.code', 'p.name', 'p.age', 'p.facility', 'p.updated_at');
+    .select(
+      'p.id as patient_id', 'p.code', 'p.name', 'p.age', 'p.facility',
+      db.raw(`GREATEST(
+        p.enrolled_at,
+        COALESCE(c.updated_at,  p.enrolled_at),
+        COALESCE(q.updated_at,  p.enrolled_at),
+        COALESCE(co.updated_at, p.enrolled_at),
+        COALESCE(pb.updated_at, p.enrolled_at),
+        COALESCE(t.updated_at,  p.enrolled_at)
+      ) AS last_activity`),
+    );
   if (user.role === 'entry' && user.sites?.length > 0) {
-    stalledQuery = stalledQuery.whereIn('p.facility', user.sites);
+    stalledSub.whereIn('p.facility', user.sites);
   }
-  const stalledRows = await stalledQuery;
-  // Cap to top 5 by oldest update so the list stays scannable
-  stalledRows.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
-  for (const r of stalledRows.slice(0, 5)) {
-    const daysSince = Math.floor((Date.now() - new Date(r.updated_at).getTime()) / (24 * 60 * 60 * 1000));
-    // Skip ones already flagged via PBMC unsubmitted
+  const stalledRows = await db
+    .select('*')
+    .from(stalledSub.as('candidates'))
+    .where('last_activity', '<', cutoff)
+    .orderBy('last_activity', 'asc')
+    .limit(20);
+
+  // Walk results in oldest-first order, skip dupes against PBMC-unsubmitted,
+  // stop once we've added 5 — so a clump of dupes at the top doesn't starve
+  // the rest of the list.
+  let stalledAdded = 0;
+  for (const r of stalledRows) {
+    if (stalledAdded >= 5) break;
     if (items.some((it) => it.patientId === r.patient_id)) continue;
+    const daysSince = Math.floor((Date.now() - new Date(r.last_activity).getTime()) / (24 * 60 * 60 * 1000));
     const masked = stripPii({ id: r.patient_id, code: r.code, name: r.name, age: r.age, facility: r.facility }, user);
     items.push({
       type: 'patient_stalled',
       severity: daysSince > 14 ? 'warn' : 'info',
       patientId: r.patient_id,
       label: `${masked.code}${masked.name ? ' · ' + masked.name : ''} — no activity in ${daysSince} days`,
-      detail: `Workflow paused`,
+      detail: 'Workflow paused',
     });
+    stalledAdded++;
   }
 
   // 3. Shipments admin/entry created that are still in transit (so they can follow up)
