@@ -3,7 +3,17 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
 import { LK_TYPES } from '../../constants/index.js';
 
-const DEFAULTS = { dateTime: '', leukemiaType: '', tubesConfirmed: false, submitted: false, submittedAt: null, submittedBy: null };
+const DEFAULTS = { dateTime: '', leukemiaType: '', tubesCollected: 3, tubesConfirmed: false, submitted: false, submittedAt: null, submittedBy: null };
+
+// Back-compat: rows submitted before this field existed will have tubesConfirmed=true
+// but no tubesCollected. Treat those as "3 tubes" (the old hard-coded count).
+function effectiveCount(data) {
+  if (data.tubesCollected != null && data.tubesCollected !== '') {
+    const n = Number(data.tubesCollected);
+    return Number.isFinite(n) && n > 0 ? Math.min(3, Math.max(1, n)) : null;
+  }
+  return data.tubesConfirmed ? 3 : null;
+}
 
 export default function CollectionStep({ patientId, patient, readOnly, onComplete }) {
   const { t, user, users } = useApp();
@@ -46,23 +56,27 @@ export default function CollectionStep({ patientId, patient, readOnly, onComplet
                   </div>
                 ))}
               </div>
-              {/* Tubes visual */}
-              <div className="card-inner">
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 12, color: 'var(--ac)' }}>&#10064; {t.col.tubes}</div>
-                <div className="fc gap10">
-                  {[1, 2, 3].map((n) => (
-                    <div key={n} style={{
-                      background: 'var(--s1)',
-                      border: `2px solid ${data.tubesConfirmed ? 'var(--ok)' : 'var(--bd)'}`,
-                      borderRadius: 8, padding: '10px 14px', flex: 1, textAlign: 'center',
-                    }}>
-                      <div style={{ fontSize: '.72rem', color: 'var(--tx2)', fontWeight: 600 }}>TUBE {n}</div>
-                      <div style={{ fontSize: '.68rem', color: data.tubesConfirmed ? 'var(--ok)' : 'var(--tx3)', marginTop: 3 }}>EDTA</div>
+              {/* Tubes visual — only render the count that was drawn */}
+              {(() => {
+                const count = effectiveCount(data) || 0;
+                return (
+                  <div className="card-inner">
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 12, color: 'var(--ac)' }}>&#10064; {t.col.tubes}</div>
+                    <div className="fc gap10">
+                      {Array.from({ length: count }, (_, i) => i + 1).map((n) => (
+                        <div key={n} style={{
+                          background: 'var(--s1)', border: '2px solid var(--ok)',
+                          borderRadius: 8, padding: '10px 14px', flex: 1, textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: '.72rem', color: 'var(--tx2)', fontWeight: 600 }}>TUBE {n}</div>
+                          <div style={{ fontSize: '.68rem', color: 'var(--ok)', marginTop: 3 }}>EDTA</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {data.tubesConfirmed && <div className="badge b-ok mt8">&#10003; 3 tubes confirmed</div>}
-              </div>
+                    <div className="badge b-ok mt8">&#10003; {count} tube{count === 1 ? '' : 's'} drawn</div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -89,31 +103,58 @@ export default function CollectionStep({ patientId, patient, readOnly, onComplet
         </div>
         <div className="card-inner">
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.82rem', marginBottom: 12 }}>{t.col.tubes}</div>
-          <div className="fc gap10">
-            {[1, 2, 3].map((n) => (
-              <div key={n} style={{
-                background: 'var(--s1)',
-                border: `2px solid ${data.tubesConfirmed ? 'var(--ok)' : 'var(--bd)'}`,
-                borderRadius: 8, padding: '10px 14px', flex: 1, textAlign: 'center', transition: 'border .2s',
-              }}>
-                <div style={{ fontSize: '.72rem', color: 'var(--tx2)', fontWeight: 600 }}>TUBE {n}</div>
-                <div style={{ fontSize: '.68rem', color: data.tubesConfirmed ? 'var(--ok)' : 'var(--tx3)', marginTop: 3 }}>EDTA</div>
-              </div>
-            ))}
-          </div>
           {!readOnly && (
-            <label className="cbox mt12">
-              <input type="checkbox" checked={data.tubesConfirmed} onChange={(e) => update({ tubesConfirmed: e.target.checked })} />
-              <span className="cbox-lbl">{t.col.tubesLbl}</span>
-            </label>
+            <div className="f" style={{ maxWidth: 240, marginBottom: 12 }}>
+              <label className="lbl">{t.col.tubesCount}</label>
+              <input
+                type="number"
+                min="1"
+                max="3"
+                step="1"
+                className="inp"
+                value={data.tubesCollected ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') return update({ tubesCollected: '' });
+                  const n = Math.max(1, Math.min(3, parseInt(raw, 10) || 1));
+                  update({ tubesCollected: n });
+                }}
+              />
+              <div style={{ fontSize: '.72rem', color: 'var(--tx3)', marginTop: 4 }}>{t.col.tubesCountH}</div>
+            </div>
           )}
-          {data.tubesConfirmed && <div className="badge b-ok mt8">&#10003; 3 tubes confirmed</div>}
+          {(() => {
+            const count = effectiveCount(data) || 0;
+            if (count === 0) return null;
+            return (
+              <>
+                <div className="fc gap10">
+                  {Array.from({ length: count }, (_, i) => i + 1).map((n) => (
+                    <div key={n} style={{
+                      background: 'var(--s1)', border: '2px solid var(--ok)',
+                      borderRadius: 8, padding: '10px 14px', flex: 1, textAlign: 'center', transition: 'border .2s',
+                    }}>
+                      <div style={{ fontSize: '.72rem', color: 'var(--tx2)', fontWeight: 600 }}>TUBE {n}</div>
+                      <div style={{ fontSize: '.68rem', color: 'var(--ok)', marginTop: 3 }}>EDTA</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="badge b-ok mt8">&#10003; {count} tube{count === 1 ? '' : 's'} drawn</div>
+              </>
+            );
+          })()}
         </div>
         {!readOnly && (
           <div className="fc gap8 mt16" style={{ justifyContent: 'flex-end' }}>
             {flash && <span className="save-flash">&#10003; {t.misc.saveFlash}</span>}
             <button className="btn btn-bd" onClick={() => save()}>{t.pt.save}</button>
-            <button className="btn btn-ac" disabled={!data.dateTime || !data.tubesConfirmed} onClick={doSubmit}>{t.col.submit}</button>
+            <button
+              className="btn btn-ac"
+              disabled={!data.dateTime || !effectiveCount(data)}
+              onClick={doSubmit}
+            >
+              {t.col.submit}
+            </button>
           </div>
         )}
       </div>

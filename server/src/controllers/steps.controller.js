@@ -315,6 +315,9 @@ function buildUpdates(step, data) {
         date_time: data.dateTime,
         leukemia_type: data.leukemiaType,
         tubes_confirmed: data.tubesConfirmed,
+        tubes_collected: data.tubesCollected != null && data.tubesCollected !== ''
+          ? Math.max(1, Math.min(3, parseInt(data.tubesCollected, 10) || 1))
+          : undefined,
       });
     case 'pbmc':
       return pickDefined({
@@ -328,6 +331,8 @@ function buildUpdates(step, data) {
         storage_fridge: data.storage?.fridge,
         storage_shelf: data.storage?.shelf,
         storage_box: data.storage?.box,
+        lab_result_file: data.labResultFile,
+        lab_result_name: data.labResultFileName,
       });
     default:
       return {};
@@ -411,6 +416,7 @@ function formatCollection(row) {
     dateTime: row.date_time,
     leukemiaType: row.leukemia_type,
     tubesConfirmed: row.tubes_confirmed,
+    tubesCollected: row.tubes_collected,
     submitted: row.submitted,
     submittedAt: row.submitted_at,
     submittedBy: row.submitted_by,
@@ -432,6 +438,8 @@ function formatPbmc(row) {
       shelf: row.storage_shelf || '',
       box: row.storage_box || '',
     },
+    labResultFile: row.lab_result_file || null,
+    labResultFileName: row.lab_result_name || null,
     submitted: row.submitted,
     submittedAt: row.submitted_at,
     submittedBy: row.submitted_by,

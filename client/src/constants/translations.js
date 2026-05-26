@@ -39,7 +39,8 @@ export const T = {
     col: {
       title: 'Sample Collection',
       dt: 'Date & Time of Collection', lkType: 'Leukemia Type (confirm)',
-      tubes: '3 EDTA Tubes Collected', tubesLbl: 'Confirm all 3 tubes collected',
+      tubes: 'EDTA Tubes Collected', tubesLbl: 'How many tubes were drawn?',
+      tubesCount: 'Number of tubes (1–3)', tubesCountH: 'Up to 3, depending on how many were drawn',
       submit: 'Save Collection', done: 'Collection saved',
     },
     pbmc: {
@@ -165,7 +166,9 @@ export const T = {
     qsec: { A: 'A \u2014 Identit\u00e9', B: 'B \u2014 Socio-\u00e9conomique', C: 'C \u2014 Sant\u00e9', D: 'D \u2014 Clinique', E: 'E \u2014 Traitement', F: 'F \u2014 Environnement' },
     col: {
       title: 'Collecte d\u2019\u00e9chantillons', dt: 'Date et heure', lkType: 'Type leuc\u00e9mie (confirmer)',
-      tubes: '3 tubes EDTA', tubesLbl: 'Confirmer 3 tubes collect\u00e9s', submit: 'Enregistrer', done: 'Enregistr\u00e9',
+      tubes: 'Tubes EDTA collect\u00e9s', tubesLbl: 'Combien de tubes ont \u00e9t\u00e9 pr\u00e9lev\u00e9s ?',
+      tubesCount: 'Nombre de tubes (1\u20133)', tubesCountH: 'Jusqu\u2019\u00e0 3, selon ce qui a \u00e9t\u00e9 pr\u00e9lev\u00e9',
+      submit: 'Enregistrer', done: 'Enregistr\u00e9',
     },
     pbmc: {
       title: 'Isolation PBMC', loc: 'Lieu d\u2019isolation', dt: 'Date et heure', cc: 'Num\u00e9ration cellulaire',
@@ -280,7 +283,9 @@ export const T = {
     qsec: { A: 'A \u2014 Imyoborere', B: 'B \u2014 Imibereho', C: 'C \u2014 Ubuzima', D: 'D \u2014 Isuzuma', E: 'E \u2014 Ubuvuzi', F: 'F \u2014 Ibidukikije' },
     col: {
       title: 'Gufata amaraso', dt: 'Itariki n\u2019isaha', lkType: 'Ubwoko bwa leukemia',
-      tubes: 'Impombo 3 EDTA', tubesLbl: 'Emeza ko impombo 3 zafashwe', submit: 'Bika', done: 'Byabitswe',
+      tubes: 'Impombo EDTA zafashwe', tubesLbl: 'Ni impombo zingahe zafashwe?',
+      tubesCount: 'Umubare w’impombo (1–3)', tubesCountH: 'Zigera kuri 3, bitewe n’izafashwe',
+      submit: 'Bika', done: 'Byabitswe',
     },
     pbmc: {
       title: 'Gutunganya PBMC', loc: 'Aho bitunganyirijwe', dt: 'Itariki n\u2019isaha',

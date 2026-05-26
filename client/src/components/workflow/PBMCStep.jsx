@@ -3,14 +3,58 @@ import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
 import { SITES } from '../../constants/index.js';
 
-const DEFAULTS = { location: '', dateTime: '', cellCount: '', viability: '', concentration: '', vials: '', storage: { site: '', fridge: '', shelf: '', box: '' }, submitted: false, submittedAt: null, submittedBy: null };
+const DEFAULTS = {
+  location: '', dateTime: '', cellCount: '', viability: '', concentration: '', vials: '',
+  storage: { site: '', fridge: '', shelf: '', box: '' },
+  labResultFile: null, labResultFileName: null,
+  submitted: false, submittedAt: null, submittedBy: null,
+};
+const MAX_LAB_FILE_MB = 5;
+
+function compressImage(dataUrl, maxWidth = 1600) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
 
 export default function PBMCStep({ patientId, readOnly, onComplete }) {
   const { t, user, users } = useApp();
   const { data, update, save, submit, flash } = useStepData(patientId, 'pbmc', DEFAULTS);
   const [showDetails, setShowDetails] = useState(false);
+  const [fileErr, setFileErr] = useState('');
 
   const updS = (v) => update({ storage: { ...data.storage, ...v } });
+
+  const handleLabFile = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFileErr('');
+    if (f.size > MAX_LAB_FILE_MB * 1024 * 1024) {
+      setFileErr(`File too large (max ${MAX_LAB_FILE_MB}MB)`);
+      return;
+    }
+    const rd = new FileReader();
+    rd.onload = async (ev) => {
+      let result = ev.target.result;
+      if (f.type.startsWith('image/') && result.length > 600_000) {
+        result = await compressImage(result);
+      }
+      update({ labResultFile: result, labResultFileName: f.name });
+    };
+    rd.readAsDataURL(f);
+  };
+
+  const clearLabFile = () => update({ labResultFile: null, labResultFileName: null });
 
   const doSubmit = async () => {
     await submit(user?.id, user?.name);
@@ -52,6 +96,20 @@ export default function PBMCStep({ patientId, readOnly, onComplete }) {
                   </div>
                 ))}
               </div>
+              {data.labResultFile && (
+                <div className="card-inner" style={{ marginBottom: 12 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 8, color: 'var(--ac)' }}>&#10064; Lab result</div>
+                  <a
+                    href={data.labResultFile}
+                    download={data.labResultFileName || 'lab-result'}
+                    className="btn btn-bd btn-sm"
+                    style={{ textDecoration: 'none' }}
+                  >
+                    &#11015; Download {data.labResultFileName || 'lab-result'}
+                  </a>
+                </div>
+              )}
+
               {/* Storage location visual */}
               <div className="card-inner">
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 12, color: 'var(--ac)' }}>&#10064; {t.pbmc.storTitle}</div>
@@ -94,6 +152,30 @@ export default function PBMCStep({ patientId, readOnly, onComplete }) {
           <div className="f"><label className="lbl">{t.pbmc.conc}</label><input type="text" className="inp" value={data.concentration} onChange={(e) => update({ concentration: e.target.value })} disabled={readOnly} /></div>
           <div className="f"><label className="lbl">{t.pbmc.vials} <span style={{ color: 'var(--tx3)', textTransform: 'none', fontWeight: 400 }}>({t.pbmc.vialsH})</span></label><input type="number" className="inp" value={data.vials} onChange={(e) => update({ vials: e.target.value })} disabled={readOnly} /></div>
         </div>
+        {!readOnly && (
+          <div className="card-inner" style={{ marginBottom: 12 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 4 }}>&#10064; Lab result (optional)</div>
+            <div style={{ fontSize: '.78rem', color: 'var(--tx3)', marginBottom: 10 }}>
+              Upload the hematology printout or analyzer report (PDF or image, max {MAX_LAB_FILE_MB}MB).
+            </div>
+            {data.labResultFile ? (
+              <div className="fc gap8">
+                <a
+                  href={data.labResultFile}
+                  download={data.labResultFileName || 'lab-result'}
+                  className="btn btn-bd btn-sm"
+                  style={{ textDecoration: 'none' }}
+                >
+                  &#11015; {data.labResultFileName || 'lab-result'}
+                </a>
+                <button type="button" className="btn btn-bd btn-sm" onClick={clearLabFile}>Remove</button>
+              </div>
+            ) : (
+              <input type="file" accept="image/*,application/pdf" onChange={handleLabFile} />
+            )}
+            {fileErr && <div style={{ color: 'var(--err)', fontSize: '.78rem', marginTop: 6 }}>{fileErr}</div>}
+          </div>
+        )}
         <div className="card-inner">
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '.88rem', marginBottom: 12 }}>&#10064; {t.pbmc.storTitle}</div>
           <div className="g2">

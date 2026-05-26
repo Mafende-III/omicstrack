@@ -18,6 +18,9 @@ export const CreateUserSchema = z.object({
   role: z.enum(ROLES),
   sites: z.array(z.enum(FACILITIES)).default([]),
   canSeePii: z.boolean().default(true),
+  canSeeName: z.boolean().optional(),
+  canSeeAge: z.boolean().optional(),
+  canSeeFacility: z.boolean().optional(),
 });
 
 export const UpdateUserSchema = z.object({
@@ -26,6 +29,9 @@ export const UpdateUserSchema = z.object({
   role: z.enum(ROLES).optional(),
   sites: z.array(z.enum(FACILITIES)).optional(),
   canSeePii: z.boolean().optional(),
+  canSeeName: z.boolean().optional(),
+  canSeeAge: z.boolean().optional(),
+  canSeeFacility: z.boolean().optional(),
   capabilities: z.array(z.string()).optional(),
 });
 
@@ -69,6 +75,7 @@ export const CollectionStepSchema = z.object({
   dateTime: z.string().optional(),
   leukemiaType: z.string().optional(),
   tubesConfirmed: z.boolean().optional(),
+  tubesCollected: z.union([z.number().int().min(1).max(3), z.literal('')]).optional(),
 }).passthrough();
 
 export const PbmcStepSchema = z.object({
@@ -84,6 +91,8 @@ export const PbmcStepSchema = z.object({
     shelf: z.string().optional(),
     box: z.string().optional(),
   }).optional(),
+  labResultFile: z.string().nullable().optional(),
+  labResultFileName: z.string().nullable().optional(),
 }).passthrough();
 
 export const CreateShipmentSchema = z.object({
