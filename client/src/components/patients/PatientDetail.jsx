@@ -9,6 +9,7 @@ import QuestionnaireStep from '../workflow/QuestionnaireStep.jsx';
 import CollectionStep from '../workflow/CollectionStep.jsx';
 import PBMCStep from '../workflow/PBMCStep.jsx';
 import TransferStep from '../workflow/TransferStep.jsx';
+import NotesPanel from '../common/NotesPanel.jsx';
 
 function StepBar({ current, completedSteps, t, onNav }) {
   return (
@@ -111,15 +112,15 @@ export default function PatientDetail({ patient, onBack }) {
             <div>
               <div className="fc gap8 mb6">
                 <span className="code-pill">{patient.code}</span>
-                {canSeeField(user?.canSeePii, 'name') && <span className="pt-bn">{patient.name}</span>}
+                {canSeeField(user, 'name') && <span className="pt-bn">{patient.name}</span>}
               </div>
               <div className="pt-bm">
-                {patient.age != null && <><span>{patient.age} yrs</span><span>&middot;</span></>}
+                {patient.age != null && canSeeField(user, 'age') && <><span>{patient.age} yrs</span><span>&middot;</span></>}
                 <span className={`badge ${patient.treatment === 'On Treatment' ? 'b-ok' : 'b-muted'}`}>
                   {patient.treatment === 'On Treatment' ? t.pt.onTx : t.pt.offTx}
                 </span>
                 <span className="badge b-ac">{patient.leukemiaType}</span>
-                {patient.facility && <span className="badge b-muted">{patient.facility}</span>}
+                {patient.facility && canSeeField(user, 'facility') && <span className="badge b-muted">{patient.facility}</span>}
                 <span style={{ color: 'var(--tx3)', fontSize: '.68rem' }}>
                   {t.pt.enrolled}: {patient.enrolledAt?.split('T')[0]}
                 </span>
@@ -188,6 +189,16 @@ export default function PatientDetail({ patient, onBack }) {
       {step === 'collection' && <CollectionStep patientId={patient.id} patient={patient} readOnly={readOnly} onComplete={checkCompleted} />}
       {step === 'pbmc' && <PBMCStep patientId={patient.id} readOnly={readOnly} onComplete={checkCompleted} />}
       {step === 'transfer' && <TransferStep patientId={patient.id} onComplete={checkCompleted} />}
+
+      {/* Per-step comment thread — one per workflow stage */}
+      {step && step !== 'transfer' && (
+        <NotesPanel patientId={patient.id} step={step} compact />
+      )}
+
+      {/* Overall patient notes — visible across all steps */}
+      <div style={{ marginTop: 24 }}>
+        <NotesPanel patientId={patient.id} step="overall" title="Overall patient notes" />
+      </div>
     </div>
   );
 }

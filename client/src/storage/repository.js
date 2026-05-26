@@ -128,3 +128,17 @@ export const AuditRepo = {
     return api.get(`/audit/entity/${entityId}`);
   },
 };
+
+export const NotesRepo = {
+  // step: undefined = all notes for patient; 'overall' = top-level only; or a step key
+  async list(patientId, step) {
+    const qs = step ? `?step=${encodeURIComponent(step)}` : '';
+    return api.get(`/patients/${patientId}/notes${qs}`);
+  },
+  async create(patientId, body, step = null) {
+    return api.post(`/patients/${patientId}/notes`, { body, step });
+  },
+  async remove(patientId, noteId) {
+    return api.del(`/patients/${patientId}/notes/${noteId}`);
+  },
+};

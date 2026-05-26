@@ -15,6 +15,7 @@ import filesRoutes from './routes/files.routes.js';
 import preferencesRoutes from './routes/preferences.routes.js';
 import templatesRoutes from './routes/templates.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
+import notesRoutes from './routes/notes.routes.js';
 
 const app = express();
 
@@ -43,6 +44,8 @@ app.use('/api/v1/files', filesRoutes);
 app.use('/api/v1/preferences', preferencesRoutes);
 app.use('/api/v1/templates', templatesRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
+// Notes are mounted under /patients/:patientId/notes — uses the same prefix as patients
+app.use('/api/v1/patients', notesRoutes);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
