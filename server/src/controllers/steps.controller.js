@@ -352,6 +352,53 @@ function pickDefined(obj) {
   return result;
 }
 
+// Wipe a step row so the patient can re-fill / re-upload it. The step
+// becomes empty (submitted=false, no file, no signatures, no answers).
+// The patient row itself is untouched, as are unrelated step tables.
+// All deletions are audit-logged so IRB can trace why a record was reset.
+export async function resetStep(req, res) {
+  const { patientId, step } = req.params;
+  const table = STEP_TABLES[step];
+  if (!table) return res.status(400).json({ error: 'Invalid step' });
+
+  // Verify patient
+  const patient = await db('patients').where('id', patientId).first();
+  if (!patient) return res.status(404).json({ error: 'Patient not found' });
+
+  // Site check for entry role
+  if (req.user.role === 'entry' && req.user.sites.length > 0 && !req.user.sites.includes(patient.facility)) {
+    return res.status(403).json({ error: 'Patient not at your assigned site' });
+  }
+
+  const existing = await db(table).where('patient_id', patientId).first();
+  if (!existing) {
+    return res.status(404).json({ error: 'Step has no data to reset' });
+  }
+
+  // Delete the row entirely — a fresh GET will return null and the step
+  // component will render its empty form ready for new input.
+  await db(table).where('patient_id', patientId).del();
+
+  await logAudit({
+    userId: req.user.id,
+    userName: req.user.name,
+    action: `${step}.reset`,
+    entityType: 'step',
+    entityId: existing.id,
+    details: {
+      step,
+      patientId,
+      patientCode: patient.code,
+      previousMode: existing.mode,
+      previousFileName: existing.file_name,
+      previouslySubmitted: existing.submitted,
+    },
+    ipAddress: req.ip,
+  });
+
+  res.json({ reset: true, step });
+}
+
 export async function downloadStepPdf(req, res) {
   const { patientId, step } = req.params;
   if (step !== 'consent' && step !== 'questionnaire') {

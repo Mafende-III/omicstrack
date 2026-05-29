@@ -3,7 +3,10 @@ import { logAudit } from '../services/audit.service.js';
 import { stripPii } from '../middleware/piiFilter.js';
 
 export async function getPatients(req, res) {
-  let query = db('patients').orderBy('enrolled_at', 'desc');
+  // Sort by patient code ascending — clinicians scan the list by code,
+  // not by enrollment date, so 001 / 002 / 003 reads more naturally than
+  // the newest-first chronological order.
+  let query = db('patients').orderBy('code', 'asc');
 
   if (req.siteFilter) {
     query = query.whereIn('facility', req.siteFilter);

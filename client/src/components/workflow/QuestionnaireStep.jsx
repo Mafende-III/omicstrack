@@ -4,6 +4,7 @@ import { useStepData } from '../../hooks/useStepData.js';
 import { api } from '../../storage/engine.js';
 import { QF } from '../../constants/questionnaire.js';
 import FileViewer from '../shared/FileViewer.jsx';
+import ResetStepButton from '../common/ResetStepButton.jsx';
 
 // Normalize either the DB template content or the bundled QF static module
 // into a single runtime shape carrying the new conditional-logic metadata
@@ -102,7 +103,7 @@ export default function QuestionnaireStep({ patientId, patient, readOnly, onComp
   const langKey = ['en', 'fr', 'ki'].includes(lang) ? lang : 'en';
   const allSections = buildSections(questionnaireTemplate?.content, langKey, t.qsec);
 
-  const { data, update, save, submit, flash, loading } = useStepData(patientId, 'questionnaire', DEFAULTS);
+  const { data, update, save, submit, flash, loading, resetLocal } = useStepData(patientId, 'questionnaire', DEFAULTS);
 
   // Filter sections + fields by showIf when in edit mode. The submitted/view-
   // details branch below uses `allSections` so previously-answered hidden
@@ -209,9 +210,17 @@ export default function QuestionnaireStep({ patientId, patient, readOnly, onComp
               </button>
             )}
           </div>
-          <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
-            {showDetails ? 'Hide' : 'View'} Details
-          </button>
+          <div className="fc gap6">
+            <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
+              {showDetails ? 'Hide' : 'View'} Details
+            </button>
+            <ResetStepButton
+              patientId={patientId}
+              step="questionnaire"
+              mode={data.mode}
+              onReset={() => { resetLocal(); onComplete?.(); }}
+            />
+          </div>
         </div>
         {showDetails && (
           <div className="slide-up">

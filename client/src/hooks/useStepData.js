@@ -110,5 +110,11 @@ export function useStepData(patientId, stepKey, defaultData) {
     }
   }, [data, patientId, stepKey]);
 
-  return { data, update, save, submit, flash, loading };
+  // Local-only reset after the server-side DELETE — flips state back to
+  // defaults so the form re-renders empty without a page reload.
+  const resetLocal = useCallback(() => {
+    setData(defaultData);
+  }, [defaultData]);
+
+  return { data, update, save, submit, flash, loading, resetLocal };
 }

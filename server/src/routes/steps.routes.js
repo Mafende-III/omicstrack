@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getStep, saveStep, submitStep, downloadStepPdf } from '../controllers/steps.controller.js';
+import { getStep, saveStep, submitStep, downloadStepPdf, resetStep } from '../controllers/steps.controller.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireCapability } from '../middleware/rbac.js';
 
@@ -30,5 +30,16 @@ function requireStepCapability(req, res, next) {
 router.put('/:patientId/:step', authenticate, requireStepCapability, saveStep);
 router.post('/:patientId/:step/submit', authenticate, requireStepCapability, submitStep);
 router.get('/:patientId/:step/pdf', authenticate, downloadStepPdf);
+
+// Reset a step: needs edit_patient (the "fix mistakes" capability) AND the
+// matching submit_<step> capability so we don't grant reset rights to users
+// who couldn't have submitted the step in the first place.
+router.delete(
+  '/:patientId/:step',
+  authenticate,
+  requireCapability('edit_patient'),
+  requireStepCapability,
+  resetStep,
+);
 
 export default router;

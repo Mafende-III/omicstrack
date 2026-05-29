@@ -5,6 +5,7 @@ import { api } from '../../storage/engine.js';
 import { CONSENT_TEMPLATE as STATIC_CONSENT_TEMPLATE } from '../../constants/consentTemplate.js';
 import SigPad from '../shared/SigPad.jsx';
 import FileViewer from '../shared/FileViewer.jsx';
+import ResetStepButton from '../common/ResetStepButton.jsx';
 
 const DEFAULTS = {
   mode: 'fill',
@@ -42,7 +43,7 @@ export default function ConsentStep({ patientId, readOnly, onComplete }) {
   // Prefer DB-managed template, fall back to bundled static template if API hasn't loaded yet
   const templateContent = consentTemplate?.content || STATIC_CONSENT_TEMPLATE;
   const tpl = templateContent[langKey] || templateContent.en;
-  const { data, update, save, submit, flash } = useStepData(patientId, 'consent', DEFAULTS);
+  const { data, update, save, submit, flash, resetLocal } = useStepData(patientId, 'consent', DEFAULTS);
   const fileRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
   const [fileErr, setFileErr] = useState('');
@@ -111,9 +112,17 @@ export default function ConsentStep({ patientId, readOnly, onComplete }) {
               </button>
             )}
           </div>
-          <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
-            {showDetails ? 'Hide' : 'View'} Details
-          </button>
+          <div className="fc gap6">
+            <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
+              {showDetails ? 'Hide' : 'View'} Details
+            </button>
+            <ResetStepButton
+              patientId={patientId}
+              step="consent"
+              mode={data.mode}
+              onReset={() => { resetLocal(); onComplete?.(); }}
+            />
+          </div>
         </div>
         {showDetails && (
           <div className="slide-up">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
 import { LK_TYPES } from '../../constants/index.js';
+import ResetStepButton from '../common/ResetStepButton.jsx';
 
 const DEFAULTS = { dateTime: '', leukemiaType: '', tubesCollected: 3, tubesConfirmed: false, submitted: false, submittedAt: null, submittedBy: null };
 
@@ -18,7 +19,7 @@ function effectiveCount(data) {
 export default function CollectionStep({ patientId, patient, readOnly, onComplete }) {
   const { t, user, users } = useApp();
   const defaults = { ...DEFAULTS, leukemiaType: patient?.leukemiaType || '' };
-  const { data, update, save, submit, flash } = useStepData(patientId, 'collection', defaults);
+  const { data, update, save, submit, flash, resetLocal } = useStepData(patientId, 'collection', defaults);
   const [showDetails, setShowDetails] = useState(false);
 
   const doSubmit = async () => {
@@ -33,9 +34,16 @@ export default function CollectionStep({ patientId, patient, readOnly, onComplet
       <div className="fade">
         <div className="al al-ok fc gap8" style={{ justifyContent: 'space-between' }}>
           <span>&#10003; {t.col.done}</span>
-          <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
-            {showDetails ? 'Hide' : 'View'} Details
-          </button>
+          <div className="fc gap6">
+            <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
+              {showDetails ? 'Hide' : 'View'} Details
+            </button>
+            <ResetStepButton
+              patientId={patientId}
+              step="collection"
+              onReset={() => { resetLocal(); onComplete?.(); }}
+            />
+          </div>
         </div>
         {showDetails && (
           <div className="slide-up">

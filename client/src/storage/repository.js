@@ -72,6 +72,12 @@ export const StepRepo = {
   async submitStep(patientId, step, data) {
     return api.post(`/steps/${patientId}/${step}/submit`, data);
   },
+
+  // Wipe the step row so the patient can re-fill / re-upload it.
+  // Audit-logged server-side.
+  async resetStep(patientId, step) {
+    return api.del(`/steps/${patientId}/${step}`);
+  },
 };
 
 export const ShipmentRepo = {

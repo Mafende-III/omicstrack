@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext.jsx';
 import { useStepData } from '../../hooks/useStepData.js';
 import { SITES } from '../../constants/index.js';
+import ResetStepButton from '../common/ResetStepButton.jsx';
 
 const DEFAULTS = {
   location: '', dateTime: '', cellCount: '', viability: '', concentration: '', vials: '',
@@ -29,7 +30,7 @@ function compressImage(dataUrl, maxWidth = 1600) {
 
 export default function PBMCStep({ patientId, readOnly, onComplete }) {
   const { t, user, users } = useApp();
-  const { data, update, save, submit, flash } = useStepData(patientId, 'pbmc', DEFAULTS);
+  const { data, update, save, submit, flash, resetLocal } = useStepData(patientId, 'pbmc', DEFAULTS);
   const [showDetails, setShowDetails] = useState(false);
   const [fileErr, setFileErr] = useState('');
 
@@ -69,9 +70,16 @@ export default function PBMCStep({ patientId, readOnly, onComplete }) {
       <div className="fade">
         <div className="al al-ok fc gap8" style={{ justifyContent: 'space-between' }}>
           <span>&#10003; {t.pbmc.done}</span>
-          <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
-            {showDetails ? 'Hide' : 'View'} Details
-          </button>
+          <div className="fc gap6">
+            <button className="btn btn-bd btn-sm" onClick={() => setShowDetails(!showDetails)}>
+              {showDetails ? 'Hide' : 'View'} Details
+            </button>
+            <ResetStepButton
+              patientId={patientId}
+              step="pbmc"
+              onReset={() => { resetLocal(); onComplete?.(); }}
+            />
+          </div>
         </div>
         {showDetails && (
           <div className="slide-up">
